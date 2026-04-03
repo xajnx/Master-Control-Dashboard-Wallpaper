@@ -402,6 +402,7 @@ const ALERT_URGENCY_SCORE = { immediate: 4, expected: 3, future: 2, past: 1, unk
 const ALERT_CERTAINTY_SCORE = { observed: 3, likely: 2, possible: 1, unlikely: 0, unknown: 0 };
 const ALERTS_MODE_KEY = "alerts_critical_only";
 let alertsCriticalOnly = false;
+const alertTimers = {};
 
 try {
     alertsCriticalOnly = localStorage.getItem(ALERTS_MODE_KEY) === "1";
@@ -476,6 +477,27 @@ function healthLine(id) {
 
 function setWidgetHtml(el, id, bodyHtml) {
     el.innerHTML = `${bodyHtml}${healthLine(id)}`;
+}
+
+function updateWidgetAlert(id, shouldAlert, durationMs = 5000) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    if (alertTimers[id]) {
+        clearTimeout(alertTimers[id]);
+        delete alertTimers[id];
+    }
+
+    if (!shouldAlert) {
+        el.classList.remove("alert");
+        return;
+    }
+
+    el.classList.add("alert");
+    alertTimers[id] = setTimeout(() => {
+        el.classList.remove("alert");
+        delete alertTimers[id];
+    }, durationMs);
 }
 
 function parseTimeMs(value) {
@@ -1120,6 +1142,7 @@ async function loadSolar() {
         }
 
         if (isNaN(k)) {
+            updateWidgetAlert("solar", false);
             const kpVals = historyValues(kpHistory);
             if (kpVals.length > 0) {
                 const last = kpVals[kpVals.length - 1];
@@ -1162,6 +1185,8 @@ async function loadSolar() {
         const kpMax24h = Math.max(...kpVals);
         const kpAvg24h = kpVals.reduce((sum, val) => sum + val, 0) / kpVals.length;
         const kpTrend = computeTrendSignal(kpVals, 0.25, -0.25);
+        const solarAlert = k >= 5 && kpTrend.label === "rising";
+        updateWidgetAlert("solar", solarAlert);
 
         let plasmaLine = "";
         if (plasmaDensity !== null) {
@@ -1183,6 +1208,7 @@ async function loadSolar() {
     } catch (err) {
         console.error("Solar Error:", err);
         markHealth("solar", "offline", "Solar feed unavailable");
+        updateWidgetAlert("solar", false);
         el.innerHTML = "Offline";
         renderGraphHealth("solar", "solarHealth");
     }
@@ -1213,6 +1239,8 @@ async function loadSchumann() {
         const schMax24h = Math.max(...schVals);
         const schAvg24h = schVals.reduce((sum, val) => sum + val, 0) / schVals.length;
         const schTrend = computeTrendSignal(schVals, 1.5, -1.5);
+        const schAlert = responseValue > 30 && schTrend.label === "rising";
+        updateWidgetAlert("schumann", schAlert);
         const source = data?.source || "configured-source";
         const mode = data?.mode || "live";
 
@@ -1224,28 +1252,13 @@ async function loadSchumann() {
         `;
 
         drawChart("schumannChart", schumannHistory, 60, { yLabel: "Resp", xLabel: "Time" });
-        checkCorrelation(responseValue);
         renderGraphHealth("schumann", "schumannHealth");
 
     } catch (err) {
         markHealth("schumann", "offline", "No Schumann source configured");
+        updateWidgetAlert("schumann", false);
         el.innerHTML = `Offline<div class="item" style="font-size:10px;opacity:0.7;">${escapeHtml(err?.message || "Unknown source error")}</div>`;
         renderGraphHealth("schumann", "schumannHealth");
-    }
-}
-
-/* ---------------- CORRELATION (Visual Only) ---------------- */
-function checkCorrelation(density) {
-    const kpVals = historyValues(kpHistory);
-    const kp = kpVals[kpVals.length - 1];
-    if (typeof kp === "number" && kp >= 5 && density > 10) {
-        document.getElementById("solar").classList.add("alert");
-        document.getElementById("schumann").classList.add("alert");
-        // Audio alert removed to prevent browser context errors and freezing
-        setTimeout(()=>{
-            document.getElementById("solar").classList.remove("alert");
-            document.getElementById("schumann").classList.remove("alert");
-        },5000);
     }
 }
 
