@@ -1,13 +1,13 @@
 __pycache__/
 *.pyc
 .env
+.vscode
 config.local.json
 data/trend_history.json
 data/schumann_response.json
 
 # local only do not upload
 /.env.example
-/README.md
 /assets/
 /config.example.json
 /data/

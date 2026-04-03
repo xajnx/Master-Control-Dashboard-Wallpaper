@@ -25,16 +25,16 @@ A local situational-awareness dashboard with a static frontend and a Flask API p
 - `schumann_adapter.py`: Schumann payload normalizer
 - `.env.example`: backend environment template
 - `config.example.json`: frontend runtime config template
-- `config.local.json`: starter runtime config included in this sanitized export
 - `data/`: persisted trend history and optional local Schumann fallback
+- `scripts/export_sanitized.sh`: rebuilds the shareable sanitized copy
 
 ## Install (Linux)
 
-1. Clone the repo and enter the sanitized template folder.
+1. Clone the repo and enter it.
 
 ```bash
 git clone <YOUR_REPO_URL>
-cd Master-Control-Dashboard-Wallpaper/sanitized-template
+cd Master-Control-Dashboard-Wallpaper
 ```
 
 2. Ensure Python venv support is installed.
@@ -63,7 +63,11 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-6. Review `config.local.json` and update the location, radar, and visuals values for your site.
+6. Create local frontend config.
+
+```bash
+cp config.example.json config.local.json
+```
 
 ## Configuration
 
@@ -129,9 +133,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/Master-Control-Dashboard-Wallpaper/sanitized-template
-EnvironmentFile=%h/Master-Control-Dashboard-Wallpaper/sanitized-template/.env
-ExecStart=%h/Master-Control-Dashboard-Wallpaper/sanitized-template/.venv/bin/python %h/Master-Control-Dashboard-Wallpaper/sanitized-template/system_api.py
+WorkingDirectory=%h/Master-Control-Dashboard-Wallpaper
+EnvironmentFile=%h/Master-Control-Dashboard-Wallpaper/.env
+ExecStart=%h/Master-Control-Dashboard-Wallpaper/.venv/bin/python %h/Master-Control-Dashboard-Wallpaper/system_api.py
 Restart=on-failure
 RestartSec=5
 
@@ -149,8 +153,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/Master-Control-Dashboard-Wallpaper/sanitized-template
-ExecStart=%h/Master-Control-Dashboard-Wallpaper/sanitized-template/.venv/bin/python -m http.server 8080
+WorkingDirectory=%h/Master-Control-Dashboard-Wallpaper
+ExecStart=%h/Master-Control-Dashboard-Wallpaper/.venv/bin/python -m http.server 8080
 Restart=on-failure
 RestartSec=5
 
@@ -158,7 +162,7 @@ RestartSec=5
 WantedBy=default.target
 ```
 
-If the repo directory name is different on another machine, replace `%h/Master-Control-Dashboard-Wallpaper/sanitized-template` in both service files with the actual absolute path.
+If the repo directory name is different on another machine, replace `%h/Master-Control-Dashboard-Wallpaper` in both service files with the actual absolute path.
 
 2. Enable and start both services.
 
@@ -242,3 +246,21 @@ If the remote source fails or returns an incompatible payload, the backend falls
 - The API binds to `127.0.0.1` by default
 - CORS defaults to localhost-only origins
 - No elevated privileges or sudo access are required
+
+## Create Sanitized Shareable Copy
+
+To rebuild the shareable sanitized export without touching your working copy:
+
+```bash
+bash scripts/export_sanitized.sh
+```
+
+Output:
+
+```text
+sanitized-template/
+```
+
+## Publishing Note
+
+If you publish the sanitized copy, publish the contents of `sanitized-template/` rather than the live working files in the project root.
