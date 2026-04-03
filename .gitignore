@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+.env
+config.local.json
+data/trend_history.json
+data/schumann_response.json
+
+# local only do not upload
+/.env.example
+/README.md
+/assets/
+/config.example.json
+/data/
+/dashboard.html
+dashboard.html.bak
+/requirements.txt
+/schumann_adapter.py
+/scripts/
+/system_api.py

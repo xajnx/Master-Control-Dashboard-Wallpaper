@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mission Control Dashboard</title>
+
+<style>
+body {
+    margin: 0;
+    padding: 0;
+    background: black;
+    color: white;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+#bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.75;
+    z-index: -1;
+    transition: background-image 1s ease-in-out;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 8px;
+    height: 100vh;
+    box-sizing: border-box;
+}
+
+.panel {
+    background: rgba(0, 0, 0, 0.50);
+    backdrop-filter: blur(1px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 8px;
+    overflow: hidden;
+}
+
+.title {
+    font-size: 14px;
+    font-weight: bold;
+    opacity: 0.85;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.alerts-toggle {
+    font-size: 10px;
+    color: #d6e2ea;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 999px;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+
+.alerts-toggle.active {
+    color: #ffd166;
+    border-color: rgba(255,209,102,0.65);
+    background: rgba(255,209,102,0.12);
+}
+
+.desc {
+    font-size: 10px;
+    opacity: 0.6;
+    margin-top: 4px;
+}
+
+.list {
+    font-size: 14px;
+    line-height: 1.6;
+    margin-top: 10px;
+}
+
+.item {
+    margin-bottom: 4px;
+}
+
+canvas {
+    width: 100%;
+    height: 80px;
+    margin-top: 8px;
+}
+
+.radar-wrap {
+    width: 100%;
+    height: calc(100% - 16px);
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.radar-stack {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.radar-base-map {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: #0d1117;
+}
+
+.radar-overlay-map {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: transparent;
+}
+
+.radar-base-tile {
+    position: absolute;
+    width: 256px;
+    height: 256px;
+    image-rendering: auto;
+}
+
+.radar-overlay-tile {
+    position: absolute;
+    width: 256px;
+    height: 256px;
+    image-rendering: auto;
+    opacity: 0.95;
+    filter: saturate(1.25) contrast(1.15);
+}
+
+.radar-meta {
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+.health {
+    margin-top: 6px;
+    font-size: 10px;
+    opacity: 0.8;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    padding-top: 4px;
+    line-height: 1.2;
+    min-height: 14px;
+}
+
+.health-row {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.health-detail {
+    opacity: 0.9;
+}
+
+.health.ok { color: #62ffa9; }
+.health.degraded { color: #ffd166; }
+.health.offline { color: #ff8a8a; }
+
+.neo-item {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.neo-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.neo-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.neo-meta {
+    font-size: 10px;
+    opacity: 0.75;
+    line-height: 1.35;
+}
+
+.neo-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.neo-far {
+    color: #7be495;
+    border-color: rgba(123,228,149,0.6);
+}
+
+.neo-close {
+    color: #ffd166;
+    border-color: rgba(255,209,102,0.6);
+}
+
+.neo-near-miss {
+    color: #ff8a8a;
+    border-color: rgba(255,138,138,0.7);
+}
+
+.neo-unknown {
+    color: #c7d3dd;
+    border-color: rgba(199,211,221,0.5);
+}
+
+.alert {
+    animation: flash 1s infinite;
+}
+
+@keyframes flash {
+    0% { background: rgba(255,0,0,0.2); }
+    50% { background: rgba(255,0,0,0.6); }
+    100% { background: rgba(255,0,0,0.2); }
+}
+
+#refreshBtn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 999;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #00ffcc;
+    font-size: 16px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    backdrop-filter: blur(3px);
+    transition: all 0.2s ease;
+}
+
+#refreshBtn:hover {
+    background: rgba(0,255,204,0.2);
+    transform: scale(1.1);
+}
+
+.hb-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #6e7a86;
+    flex-shrink: 0;
+}
+
+.hb-dot.ok { background: #62ffa9; box-shadow: 0 0 5px rgba(98,255,169,0.8); }
+.hb-dot.degraded { background: #ffd166; box-shadow: 0 0 5px rgba(255,209,102,0.8); }
+.hb-dot.offline { background: #ff8a8a; box-shadow: 0 0 5px rgba(255,138,138,0.8); }
+.hb-dot.unknown { background: #6e7a86; }
+</style>
+</head>
+
+<body>
+
+<div id="bg"></div>
+
+<button id="refreshBtn" title="Refresh Data">⟳</button>
+
+<div class="grid">
+
+<div class="panel">
+<div class="title"><span class="hb-dot unknown" id="led-system" title="SYS"></span>💻 System Monitor</div>
+<div id="system" class="list"></div>
+</div>
+
+<div class="panel">
+<div class="title"><span class="hb-dot unknown" id="led-quakes" title="EQ"></span><span class="hb-dot unknown" id="led-tsunami" title="TSU"></span>🌍 Earthquakes / Tsunami</div>
+<div class="desc">Recent seismic activity. Higher magnitude = stronger event.</div>
+<div id="quakes" class="list"></div>
+</div>
+
+<div class="panel">
+<div class="title"><span class="hb-dot unknown" id="led-volcano" title="VOL"></span>🌋 Volcano Activity</div>
+<div id="volcano" class="list"></div>
+</div>
+
+<div class="panel">
+<div class="title"><span class="hb-dot unknown" id="led-solar" title="SOL"></span>☀️ Solar Activity</div>
+<div class="desc">Kp Index (0–9). 5+ indicates geomagnetic storm conditions.</div>
+<div id="solar" class="list"></div>
+<canvas id="kpChart"></canvas>
+<div id="solarHealth"></div>
+</div>
+
+<div class="panel">
+<div class="title"><span class="hb-dot unknown" id="led-schumann" title="SCH"></span>📡 Schumann Monitor</div>
+<div class="desc">Schumann response amplitude from a configured real-time source.</div>
+<div id="schumann" class="list"></div>
+<canvas id="schumannChart"></canvas>
+<div id="schumannHealth"></div>
+</div>
+
+<div class="panel">
+<div class="title"><span class="hb-dot unknown" id="led-neos" title="NEO"></span>☄️ Near-Earth Objects</div>
+<div id="neos" class="list"></div>
+</div>
+
+<div class="panel">
+<div class="title"><span class="hb-dot unknown" id="led-weather" title="WX"></span>⛅ Current Conditions</div>
+<div id="weather" class="list">
+    <div class="item">Loading local data...</div>
+</div>
+</div>
+
+<div class="panel">
+<div class="title-row">
+    <div class="title"><span class="hb-dot unknown" id="led-alerts" title="ALR"></span>⚠️ Texas Weather Alerts</div>
+    <button id="alertsModeBtn" class="alerts-toggle" type="button" title="Toggle critical-only alerts">Critical: Off</button>
+</div>
+<div id="alerts" class="list"></div>
+</div>
+
+<div class="panel">
+<div class="title"><span class="hb-dot unknown" id="led-radar" title="RAD"></span>🌪️ Radar</div>
+<div class="desc">Static regional radar snapshot.</div>
+<div class="radar-wrap">
+    <div class="radar-stack">
+        <div id="radarBaseMap" class="radar-base-map" aria-hidden="true"></div>
+        <div id="radarOverlayMap" class="radar-overlay-map" aria-hidden="true"></div>
+    </div>
+    <div id="radarMeta" class="radar-meta">Loading radar snapshot...</div>
+</div>
+</div>
+
+</div>
+
+<script>
+
+/* ---------------- STATE ---------------- */
+const kpHistory = [];
+const schumannHistory = [];
+const solarWindHistory = [];
+let quakesItems = [];
+let tsunamiItems = [];
+let quakesStatus = "";
+let tsunamiStatus = "";
+let trendSyncTimer = null;
+
+const FETCH_DEFAULT_TIMEOUT = 9000;
+const FETCH_DEFAULT_RETRIES = 1;
+const LOCAL_HOST = window.location.hostname || "localhost";
+const API_BASE = `${window.location.protocol.startsWith("http") ? window.location.protocol : "http:"}//${LOCAL_HOST}:5000`;
+const ASSETS_BASE = window.location.protocol.startsWith("http") ? window.location.origin : "http://localhost:8080";
+const DEFAULT_APP_CONFIG = {
+    location: {
+        label: "Winona, TX",
+        lat: 32.49,
+        lon: -95.16
+    },
+    radar: {
+        lat: 32.5,
+        lon: -99.0,
+        zoom: 4,
+        tileRadius: 1
+    },
+    visuals: {
+        backgroundImages: [
+            "/assets/angel1.jpg",
+            "/assets/angel2.jpg",
+            "/assets/angel3.jpg"
+        ]
+    }
+};
+let APP_CONFIG = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
+const SOLAR_INTERVAL_MS = 60000;
+const SCHUMANN_INTERVAL_MS = 60000;
+const TREND_WINDOW_HOURS = 24;
+const SOLAR_HISTORY_POINTS = Math.ceil((TREND_WINDOW_HOURS * 3600000) / SOLAR_INTERVAL_MS);
+const SCHUMANN_HISTORY_POINTS = Math.ceil((TREND_WINDOW_HOURS * 3600000) / SCHUMANN_INTERVAL_MS);
+const widgetHealth = {};
+const adaptivePollState = {};
+const LUNAR_DISTANCE_KM = 384400;
+const NEO_NEAR_MISS_LD = 0.75;
+const NEO_CLOSE_LD = 3.0;
+
+const ALERT_SEVERITY_SCORE = { extreme: 4, severe: 3, moderate: 2, minor: 1, unknown: 0 };
+const ALERT_URGENCY_SCORE = { immediate: 4, expected: 3, future: 2, past: 1, unknown: 0 };
+const ALERT_CERTAINTY_SCORE = { observed: 3, likely: 2, possible: 1, unlikely: 0, unknown: 0 };
+const ALERTS_MODE_KEY = "alerts_critical_only";
+let alertsCriticalOnly = false;
+
+try {
+    alertsCriticalOnly = localStorage.getItem(ALERTS_MODE_KEY) === "1";
+} catch (_) {
+    alertsCriticalOnly = false;
+}
+
+const TSUNAMI_EVENT_NAMES = new Set([
+    "tsunami warning",
+    "tsunami watch"
+]);
+
+const HEARTBEAT_ORDER = [
+    { id: "system", label: "SYS" },
+    { id: "solar", label: "SOL" },
+    { id: "schumann", label: "SCH" },
+    { id: "quakes", label: "EQ" },
+    { id: "tsunami", label: "TSU" },
+    { id: "alerts", label: "ALR" },
+    { id: "weather", label: "WX" },
+    { id: "neos", label: "NEO" },
+    { id: "radar", label: "RAD" },
+    { id: "volcano", label: "VOL" }
+];
+
+function nowLabel() {
+    return new Date().toLocaleTimeString();
+}
+
+function formatAge(ms) {
+    if (!Number.isFinite(ms) || ms < 0) return "--";
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m`;
+}
+
+function markHealth(id, state, detail = "") {
+    widgetHealth[id] = {
+        state,
+        detail,
+        updatedAt: nowLabel(),
+        updatedAtMs: Date.now()
+    };
+    renderHeartbeat();
+}
+
+function renderHeartbeat() {
+    HEARTBEAT_ORDER.forEach((f) => {
+        const el = document.getElementById(`led-${f.id}`);
+        if (!el) return;
+        const state = widgetHealth[f.id]?.state || "unknown";
+        el.className = `hb-dot ${state}`;
+        el.title = `${f.label}: ${state}`;
+    });
+}
+
+function healthLine(id) {
+    const h = widgetHealth[id];
+    if (!h) return "";
+    const label = h.state === "ok" ? "Healthy" : (h.state === "degraded" ? "Degraded" : "Offline");
+    const age = formatAge(Date.now() - (h.updatedAtMs || Date.now()));
+    const primary = `Health: ${label} | Age: ${age}`;
+    const detailParts = [`Updated: ${h.updatedAt}`];
+    if (h.detail) detailParts.push(String(h.detail).trim());
+    const detailText = detailParts.join(" | ");
+    const compactDetail = detailText.length > 54 ? `${detailText.slice(0, 51)}...` : detailText;
+    return `<div class="health ${h.state}"><div class="health-row">${escapeHtml(primary)}</div><div class="health-row health-detail">${escapeHtml(compactDetail)}</div></div>`;
+}
+
+function setWidgetHtml(el, id, bodyHtml) {
+    el.innerHTML = `${bodyHtml}${healthLine(id)}`;
+}
+
+function parseTimeMs(value) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (!value) return 0;
+    const t = Date.parse(value);
+    return Number.isFinite(t) ? t : 0;
+}
+
+function formatEventTime(value) {
+    const ts = parseTimeMs(value);
+    if (!ts) return "Time: Unknown";
+    return `Time: ${new Date(ts).toLocaleString()}`;
+}
+
+function historyValues(series) {
+    return series.map((p) => toNumber(p?.value, null)).filter((v) => v !== null);
+}
+
+function pushHistoryPoint(series, value, maxPoints, ts = Date.now()) {
+    const val = toNumber(value, null);
+    const pointTs = parseTimeMs(ts) || Date.now();
+    if (val === null) return;
+    series.push({ ts: pointTs, value: val });
+    if (series.length > maxPoints) {
+        series.splice(0, series.length - maxPoints);
+    }
+}
+
+function parseHistorySeries(raw, maxPoints) {
+    if (!Array.isArray(raw)) return [];
+    const points = [];
+    raw.slice(-maxPoints).forEach((entry) => {
+        if (typeof entry === "number") {
+            pushHistoryPoint(points, entry, maxPoints);
+            return;
+        }
+        if (!entry || typeof entry !== "object") return;
+        pushHistoryPoint(points, entry.value, maxPoints, entry.ts);
+    });
+    return points;
+}
+
+function normalizeAlertValue(value) {
+    return String(value || "unknown").trim().toLowerCase();
+}
+
+function sortNwsAlerts(features) {
+    return [...features].sort((a, b) => {
+        const ap = a?.properties || {};
+        const bp = b?.properties || {};
+
+        const aSeverity = ALERT_SEVERITY_SCORE[normalizeAlertValue(ap.severity)] ?? 0;
+        const bSeverity = ALERT_SEVERITY_SCORE[normalizeAlertValue(bp.severity)] ?? 0;
+        if (bSeverity !== aSeverity) return bSeverity - aSeverity;
+
+        const aUrgency = ALERT_URGENCY_SCORE[normalizeAlertValue(ap.urgency)] ?? 0;
+        const bUrgency = ALERT_URGENCY_SCORE[normalizeAlertValue(bp.urgency)] ?? 0;
+        if (bUrgency !== aUrgency) return bUrgency - aUrgency;
+
+        const aCertainty = ALERT_CERTAINTY_SCORE[normalizeAlertValue(ap.certainty)] ?? 0;
+        const bCertainty = ALERT_CERTAINTY_SCORE[normalizeAlertValue(bp.certainty)] ?? 0;
+        if (bCertainty !== aCertainty) return bCertainty - aCertainty;
+
+        const aTime = parseTimeMs(ap.sent || ap.effective || ap.onset || ap.expires);
+        const bTime = parseTimeMs(bp.sent || bp.effective || bp.onset || bp.expires);
+        return bTime - aTime;
+    });
+}
+
+function isCriticalAlert(feature) {
+    const p = feature?.properties || {};
+    const severity = normalizeAlertValue(p.severity);
+    const urgency = normalizeAlertValue(p.urgency);
+    const certainty = normalizeAlertValue(p.certainty);
+    const event = normalizeAlertValue(p.event);
+
+    if (severity === "extreme" || severity === "severe") return true;
+    if (urgency === "immediate" && certainty !== "unlikely") return true;
+    if (event.includes("warning")) return true;
+    return false;
+}
+
+function updateAlertsModeButton() {
+    const btn = document.getElementById("alertsModeBtn");
+    if (!btn) return;
+    btn.classList.toggle("active", alertsCriticalOnly);
+    btn.textContent = alertsCriticalOnly ? "Critical: On" : "Critical: Off";
+}
+
+function sortTsunamiFeatures(features) {
+    return [...features].sort((a, b) => {
+        const aEvent = normalizeAlertValue(a?.properties?.event);
+        const bEvent = normalizeAlertValue(b?.properties?.event);
+
+        const eventRank = (event) => {
+            if (event === "tsunami warning") return 2;
+            if (event === "tsunami watch") return 1;
+            return 0;
+        };
+
+        const ea = eventRank(aEvent);
+        const eb = eventRank(bEvent);
+        if (eb !== ea) return eb - ea;
+
+        const ta = parseTimeMs(a?.properties?.sent || a?.properties?.effective);
+        const tb = parseTimeMs(b?.properties?.sent || b?.properties?.effective);
+        return tb - ta;
+    });
+}
+
+function nextAdaptiveDelay(widgetId, config) {
+    const state = widgetHealth[widgetId]?.state || "ok";
+    const poll = adaptivePollState[widgetId] || { failures: 0 };
+
+    if (state === "ok") {
+        poll.failures = 0;
+        adaptivePollState[widgetId] = poll;
+        return config.base;
+    }
+
+    poll.failures += 1;
+    adaptivePollState[widgetId] = poll;
+
+    if (poll.failures <= 2) return config.retry;
+    const stepped = Math.round(config.retry * Math.pow(1.7, poll.failures - 2));
+    return Math.min(config.max, stepped);
+}
+
+function startAdaptivePoll(widgetId, taskFn, config) {
+    const loop = async () => {
+        try {
+            await taskFn();
+        } catch (err) {
+            console.error(`Adaptive poll error [${widgetId}]`, err);
+        }
+
+        const delay = nextAdaptiveDelay(widgetId, config);
+        setTimeout(loop, delay);
+    };
+
+    loop();
+}
+
+function renderGraphHealth(widgetId, targetId) {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    el.innerHTML = healthLine(widgetId);
+}
+
+function computeTrendSignal(values, risingThreshold, fallingThreshold) {
+    if (!Array.isArray(values) || values.length < 6) {
+        return { label: "insufficient", color: "#c7d3dd" };
+    }
+
+    const windowSize = Math.max(3, Math.min(12, Math.floor(values.length / 6)));
+    const recent = values.slice(-windowSize);
+    const previous = values.slice(-(windowSize * 2), -windowSize);
+    if (previous.length === 0) {
+        return { label: "insufficient", color: "#c7d3dd" };
+    }
+
+    const avg = (arr) => arr.reduce((s, v) => s + v, 0) / arr.length;
+    const delta = avg(recent) - avg(previous);
+
+    if (delta >= risingThreshold) return { label: "rising", color: "#ff8a8a" };
+    if (delta <= fallingThreshold) return { label: "falling", color: "#7be495" };
+    return { label: "flat", color: "#c7d3dd" };
+}
+
+function saveTrendHistory() {
+    const payload = {
+        savedAt: Date.now(),
+        kp: kpHistory.slice(-SOLAR_HISTORY_POINTS),
+        schumann: schumannHistory.slice(-SCHUMANN_HISTORY_POINTS),
+        solar_wind: solarWindHistory.slice(-SOLAR_HISTORY_POINTS)
+    };
+
+    try {
+        localStorage.setItem("trend_history", JSON.stringify(payload));
+    } catch (_) {
+        // local cache is optional
+    }
+
+    if (trendSyncTimer) clearTimeout(trendSyncTimer);
+    trendSyncTimer = setTimeout(async () => {
+        try {
+            await fetch(apiUrl("/trend-history"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+        } catch (_) {
+            // server persistence is optional fallback
+        }
+    }, 1200);
+}
+
+async function restoreTrendHistory() {
+    try {
+        const remote = await fetchJson(apiUrl("/trend-history"), { timeoutMs: 4000, retries: 0 });
+        const remoteKp = parseHistorySeries(remote?.kp, SOLAR_HISTORY_POINTS);
+        const remoteSch = parseHistorySeries(remote?.schumann, SCHUMANN_HISTORY_POINTS);
+        const remoteSw = parseHistorySeries(remote?.solar_wind, SOLAR_HISTORY_POINTS);
+
+        if (remoteKp.length || remoteSch.length || remoteSw.length) {
+            kpHistory.push(...remoteKp);
+            schumannHistory.push(...remoteSch);
+            solarWindHistory.push(...remoteSw);
+            return;
+        }
+    } catch (_) {
+        // fall through to local storage restore
+    }
+
+    try {
+        const raw = localStorage.getItem("trend_history");
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+
+        kpHistory.push(...parseHistorySeries(parsed?.kp, SOLAR_HISTORY_POINTS));
+        schumannHistory.push(...parseHistorySeries(parsed?.schumann, SCHUMANN_HISTORY_POINTS));
+        solarWindHistory.push(...parseHistorySeries(parsed?.solar_wind, SOLAR_HISTORY_POINTS));
+    } catch (_) {
+        // ignore malformed cache
+    }
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function safeHref(value) {
+    try {
+        const url = new URL(String(value ?? ""));
+        if (url.protocol === "http:" || url.protocol === "https:") {
+            return url.href;
+        }
+    } catch (_) {
+        // ignore malformed URLs and fallback to inert target
+    }
+    return "#";
+}
+
+function apiUrl(path) {
+    return `${API_BASE}${path}`;
+}
+
+function assetUrl(path) {
+    return `${ASSETS_BASE}${path}`;
+}
+
+async function loadRuntimeConfig() {
+    try {
+        const cfg = await fetchJson(`${ASSETS_BASE}/config.local.json`, { timeoutMs: 3500, retries: 0 });
+        if (cfg && typeof cfg === "object") {
+            APP_CONFIG = {
+                location: {
+                    label: cfg?.location?.label || DEFAULT_APP_CONFIG.location.label,
+                    lat: toNumber(cfg?.location?.lat, DEFAULT_APP_CONFIG.location.lat),
+                    lon: toNumber(cfg?.location?.lon, DEFAULT_APP_CONFIG.location.lon)
+                },
+                radar: {
+                    lat: toNumber(cfg?.radar?.lat, DEFAULT_APP_CONFIG.radar.lat),
+                    lon: toNumber(cfg?.radar?.lon, DEFAULT_APP_CONFIG.radar.lon),
+                    zoom: toNumber(cfg?.radar?.zoom, DEFAULT_APP_CONFIG.radar.zoom),
+                    tileRadius: toNumber(cfg?.radar?.tileRadius, DEFAULT_APP_CONFIG.radar.tileRadius)
+                },
+                visuals: {
+                    backgroundImages: Array.isArray(cfg?.visuals?.backgroundImages) && cfg.visuals.backgroundImages.length > 0
+                        ? cfg.visuals.backgroundImages
+                        : DEFAULT_APP_CONFIG.visuals.backgroundImages
+                }
+            };
+        }
+    } catch (_) {
+        APP_CONFIG = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
+    }
+}
+
+function toNumber(value, fallback = null) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function moonPhaseLabel(rawPhase) {
+    const phase = toNumber(rawPhase, null);
+    if (phase === null) return "Moon data unavailable";
+
+    const normalized = ((phase % 1) + 1) % 1;
+    const epsilon = 0.03;
+
+    if (normalized < epsilon || normalized > 1 - epsilon) return "New Moon";
+    if (Math.abs(normalized - 0.25) <= epsilon) return "First Quarter";
+    if (Math.abs(normalized - 0.5) <= epsilon) return "Full Moon";
+    if (Math.abs(normalized - 0.75) <= epsilon) return "Last Quarter";
+    if (normalized < 0.25) return "Waxing Crescent";
+    if (normalized < 0.5) return "Waxing Gibbous";
+    if (normalized < 0.75) return "Waning Gibbous";
+    return "Waning Crescent";
+}
+
+function calculateMoonPhaseFraction(date = new Date()) {
+    const synodicMonthDays = 29.53058867;
+    const knownNewMoonUtc = Date.UTC(2000, 0, 6, 18, 14, 0);
+    const daysSinceKnownNewMoon = (date.getTime() - knownNewMoonUtc) / 86400000;
+    const cycleDay = ((daysSinceKnownNewMoon % synodicMonthDays) + synodicMonthDays) % synodicMonthDays;
+    return cycleDay / synodicMonthDays;
+}
+
+async function fetchJson(url, options = {}) {
+    const timeoutMs = options.timeoutMs ?? FETCH_DEFAULT_TIMEOUT;
+    const retries = options.retries ?? FETCH_DEFAULT_RETRIES;
+    let lastError;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const response = await fetch(url, {
+                signal: controller.signal,
+                headers: options.headers
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (err) {
+            lastError = err;
+            if (attempt === retries) throw err;
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    throw lastError;
+}
+
+function renderQuakesPanel() {
+    const el = document.getElementById("quakes");
+    const statusLines = [];
+
+    if (tsunamiStatus) statusLines.push(`<div class="item" style="color:#ff6666;">${escapeHtml(tsunamiStatus)}</div>`);
+    if (quakesStatus) statusLines.push(`<div class="item" style="color:#ffaa00;">${escapeHtml(quakesStatus)}</div>`);
+
+    const tsunamiHtml = tsunamiItems.map((a) => `
+        <div class="item">
+            <a href="${safeHref(a.url)}" target="_blank" rel="noopener noreferrer" style="color:#ff3333;text-decoration:none;">
+                🌊 ${escapeHtml(a.label)}
+            </a>
+            <div style="font-size:10px;opacity:0.7;">${escapeHtml(formatEventTime(a.time))}</div>
+        </div>
+    `).join("");
+
+    const quakeHtml = quakesItems.map((q) => `
+        <div class="item">
+            <a href="${safeHref(q.url)}" target="_blank" rel="noopener noreferrer" style="color:#00ffcc;text-decoration:none;">
+                M${escapeHtml(q.mag)} - ${escapeHtml(q.place)}
+            </a>
+            <div style="font-size:10px;opacity:0.7;">${escapeHtml(formatEventTime(q.time))}</div>
+        </div>
+    `).join("");
+
+    if (!tsunamiHtml && !quakeHtml && statusLines.length === 0) {
+        setWidgetHtml(el, "quakes", '<div class="item">Waiting for seismic data...</div>');
+        return;
+    }
+
+    setWidgetHtml(el, "quakes", `${statusLines.join("")}${tsunamiHtml}${quakeHtml}`);
+}
+
+function radarTileXY(lat, lon, zoom) {
+    const latRad = lat * Math.PI / 180;
+    const n = 2 ** zoom;
+    const x = Math.floor((lon + 180) / 360 * n);
+    const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+    return { x, y };
+}
+
+function renderRadarTileLayers(host, path, lat, lon, zoom, tileRadius = 1) {
+    const baseContainer = document.getElementById("radarBaseMap");
+    const overlayContainer = document.getElementById("radarOverlayMap");
+    if (!baseContainer || !overlayContainer) return;
+
+    const center = radarTileXY(lat, lon, zoom);
+    const n = 2 ** zoom;
+    const tileCount = (tileRadius * 2) + 1;
+    const mosaicSize = tileCount * 256;
+    const viewportW = baseContainer.clientWidth || 512;
+    const viewportH = baseContainer.clientHeight || 512;
+    const offsetLeft = Math.round((viewportW - mosaicSize) / 2);
+    const offsetTop = Math.round((viewportH - mosaicSize) / 2);
+
+    const baseTiles = [];
+    const overlayTiles = [];
+
+    for (let dy = -tileRadius; dy <= tileRadius; dy++) {
+        for (let dx = -tileRadius; dx <= tileRadius; dx++) {
+            const tileX = center.x + dx;
+            const tileY = center.y + dy;
+            if (tileY < 0 || tileY >= n) continue;
+
+            const wrappedX = ((tileX % n) + n) % n;
+            const left = offsetLeft + ((dx + tileRadius) * 256);
+            const top = offsetTop + ((dy + tileRadius) * 256);
+
+            baseTiles.push(`<img class="radar-base-tile" loading="lazy" decoding="async" style="left:${left}px;top:${top}px;" src="https://tile.openstreetmap.org/${zoom}/${wrappedX}/${tileY}.png" alt="">`);
+            overlayTiles.push(`<img class="radar-overlay-tile" loading="lazy" decoding="async" style="left:${left}px;top:${top}px;" src="${host}${path}/256/${zoom}/${wrappedX}/${tileY}/2/1_1.png" alt="">`);
+        }
+    }
+
+    baseContainer.innerHTML = baseTiles.join("");
+    overlayContainer.innerHTML = overlayTiles.join("");
+}
+
+function neoClassFromDistance(km) {
+    const dist = toNumber(km, null);
+    if (dist === null) return "unknown";
+    if (dist <= LUNAR_DISTANCE_KM * NEO_NEAR_MISS_LD) return "near-miss";
+    if (dist <= LUNAR_DISTANCE_KM * NEO_CLOSE_LD) return "close";
+    return "far";
+}
+
+function formatNeoDistance(neo) {
+    const km = toNumber(neo?.miss_distance_km, null);
+    const ld = toNumber(neo?.miss_distance_lunar, null);
+    if (ld !== null && km !== null) return `${ld.toFixed(2)} LD (${Math.round(km).toLocaleString()} km)`;
+    if (km !== null) return `${Math.round(km).toLocaleString()} km`;
+    return "N/A";
+}
+
+function formatNeoSpeed(neo) {
+    const kph = toNumber(neo?.velocity_kph, null);
+    if (kph === null) return "N/A";
+    const mph = kph * 0.621371;
+    return `${Math.round(mph).toLocaleString()} mph`;
+}
+
+function formatNeoSize(neo) {
+    const min = toNumber(neo?.size_min_m, null);
+    const max = toNumber(neo?.size_max_m, null);
+    if (min === null && max === null) return "N/A";
+    if (min !== null && max !== null) return `${Math.round(min)}-${Math.round(max)} m`;
+    return `${Math.round(min ?? max)} m`;
+}
+
+function renderNeoItems(asteroids, limit = 5) {
+    return asteroids.slice(0, limit).map((neo) => {
+        const klass = neo?.proximity_class || neoClassFromDistance(neo?.miss_distance_km);
+        const badgeClass = ["far", "close", "near-miss"].includes(klass) ? klass : "unknown";
+        const label = klass === "near-miss" ? "Near-Miss" : (klass === "close" ? "Close" : (klass === "far" ? "Far" : "Unknown"));
+        return `
+            <div class="neo-item">
+                <div class="neo-top">
+                    <div class="neo-name">${escapeHtml(neo?.name ?? "Unnamed object")}${neo?.hazardous ? ' <span style="color:#ff8a8a">!</span>' : ''}</div>
+                    <span class="neo-badge neo-${badgeClass}">${label}</span>
+                </div>
+                <div class="neo-meta">Distance: ${escapeHtml(formatNeoDistance(neo))}</div>
+                <div class="neo-meta">Speed: ${escapeHtml(formatNeoSpeed(neo))} | Size: ${escapeHtml(formatNeoSize(neo))}</div>
+            </div>
+        `;
+    }).join("");
+}
+
+function sortNeosByDistance(asteroids) {
+    return [...asteroids].sort((a, b) => {
+        const da = toNumber(a?.miss_distance_km, Number.POSITIVE_INFINITY);
+        const db = toNumber(b?.miss_distance_km, Number.POSITIVE_INFINITY);
+        return da - db;
+    });
+}
+
+async function fetchJplNeoFallback() {
+    const dMin = new Date();
+    const dMax = new Date(Date.now() + 3 * 86400000);
+    const fmt = (d) => d.toISOString().split("T")[0];
+    const url = `https://ssd-api.jpl.nasa.gov/cad.api?date-min=${fmt(dMin)}&date-max=${fmt(dMax)}&dist-max=0.2&sort=dist`;
+    const cad = await fetchJson(url, { timeoutMs: 8000, retries: 1 });
+
+    const fields = Array.isArray(cad?.fields) ? cad.fields : [];
+    const rows = Array.isArray(cad?.data) ? cad.data : [];
+    if (fields.length === 0 || rows.length === 0) return [];
+
+    const index = {};
+    fields.forEach((name, i) => { index[name] = i; });
+
+    return rows.slice(0, 15).map((r) => {
+        const distAu = toNumber(r[index.dist], null);
+        const missKm = distAu !== null ? distAu * 149597870.7 : null;
+        const missLd = missKm !== null ? missKm / LUNAR_DISTANCE_KM : null;
+        const vRelKmS = toNumber(r[index.v_rel], null);
+        const vRelKph = vRelKmS !== null ? vRelKmS * 3600 : null;
+        const absMag = toNumber(r[index.h], null);
+
+        return {
+            name: r[index.des] || "Unknown object",
+            hazardous: false,
+            url: "https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html",
+            miss_distance_km: missKm,
+            miss_distance_lunar: missLd,
+            velocity_kph: vRelKph,
+            size_min_m: null,
+            size_max_m: null,
+            approach_time: r[index.cd] || null,
+            absolute_magnitude_h: absMag,
+            proximity_class: neoClassFromDistance(missKm)
+        };
+    });
+}
+
+function isTsunamiRelated(feature) {
+    const properties = feature?.properties ?? {};
+    const eventName = String(properties.event ?? "").trim().toLowerCase();
+
+    return TSUNAMI_EVENT_NAMES.has(eventName);
+}
+
+/* ---------------- RADAR SNAPSHOT ---------------- */
+async function loadRadarSnapshot() {
+    const meta = document.getElementById("radarMeta");
+    if (!meta) return;
+
+    try {
+        const mapData = await fetchJson("https://api.rainviewer.com/public/weather-maps.json", { timeoutMs: 7000, retries: 1 });
+        const host = mapData?.host;
+        const frames = Array.isArray(mapData?.radar?.past) ? mapData.radar.past : [];
+        const frame = frames.length > 0 ? frames[frames.length - 1] : null;
+        const path = frame?.path;
+
+        if (!host || !path) {
+            throw new Error("Radar frame unavailable");
+        }
+
+        renderRadarTileLayers(host, path, APP_CONFIG.radar.lat, APP_CONFIG.radar.lon, APP_CONFIG.radar.zoom, APP_CONFIG.radar.tileRadius);
+        const frameTime = typeof frame.time === "number" ? new Date(frame.time * 1000).toLocaleTimeString() : nowLabel();
+        markHealth("radar", "ok", "Static mode");
+        meta.innerHTML = `Texas regional radar | Frame: ${escapeHtml(frameTime)} | Refreshed: ${escapeHtml(nowLabel())}${healthLine("radar")}`;
+    } catch (err) {
+        console.error("Radar snapshot error:", err);
+        markHealth("radar", "offline", "RainViewer unavailable");
+        meta.innerHTML = `Radar snapshot offline${healthLine("radar")}`;
+    }
+}
+
+/* ---------------- BACKGROUND ---------------- */
+const images = [
+    assetUrl("/assets/angel1.jpg"),
+    assetUrl("/assets/angel2.jpg"),
+    assetUrl("/assets/angel3.jpg")
+];
+
+let bgIndex = 0;
+
+function rotateBackground() {
+    const bg = document.getElementById("bg");
+    if (bg) {
+        bg.style.backgroundImage = `url('${images[bgIndex]}')`;
+        bgIndex = (bgIndex + 1) % images.length;
+    }
+}
+
+function startBackgroundRotation() {
+    const configured = Array.isArray(APP_CONFIG?.visuals?.backgroundImages) ? APP_CONFIG.visuals.backgroundImages : [];
+    const normalized = configured
+        .map((item) => {
+            if (typeof item !== "string") return null;
+            if (item.startsWith("http://") || item.startsWith("https://")) return item;
+            return assetUrl(item.startsWith("/") ? item : `/${item}`);
+        })
+        .filter(Boolean);
+
+    if (normalized.length > 0) {
+        images.splice(0, images.length, ...normalized);
+    }
+    rotateBackground();
+    setInterval(rotateBackground, 120000);
+}
+
+/* ---------------- SYSTEM ---------------- */
+async function loadSystem() {
+    const el = document.getElementById("system");
+    try {
+        const data = await fetchJson(apiUrl("/system"), { timeoutMs: 4000, retries: 0 });
+        markHealth("system", "ok");
+        setWidgetHtml(el, "system", `
+            <div class="item">CPU: ${data.cpu}%</div>
+            <div class="item">RAM: ${data.memory}%</div>
+            <div class="item">Disk: ${data.disk}%</div>
+            <div class="item">Uptime: ${escapeHtml(data.uptime)}</div>
+            <div class="item" style="font-size:10px;opacity:0.6;">Updated: ${nowLabel()}</div>
+        `);
+    } catch {
+        markHealth("system", "offline", "Local API unreachable");
+        setWidgetHtml(el, "system", "System API Offline");
+    }
+}
+
+/* ---------------- SOLAR ---------------- */
+async function loadSolar() {
+    const el = document.getElementById("solar");
+    try {
+        const [data, plasmaData] = await Promise.all([
+            fetchJson("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"),
+            fetchJson("https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json", { timeoutMs: 7000, retries: 1 }).catch(() => null)
+        ]);
+
+        if (!Array.isArray(data) || data.length < 1) {
+            throw new Error("Invalid Kp payload");
+        }
+
+        // NOAA currently returns an array of objects; keep compatibility with older array rows.
+        let latestEntry = null;
+        let k = NaN;
+
+        for (let i = data.length - 1; i >= 0; i--) {
+            const row = data[i];
+            if (Array.isArray(row)) {
+                if (row.length < 2) continue;
+                k = parseFloat(row[1]);
+                if (!isNaN(k)) {
+                    latestEntry = { time: row[0], kp: row[1] };
+                    break;
+                }
+                continue;
+            }
+
+            if (!row || typeof row !== "object") continue;
+            const parsed = parseFloat(row.Kp);
+            if (!isNaN(parsed)) {
+                k = parsed;
+                latestEntry = { time: row.time_tag, kp: row.Kp };
+                break;
+            }
+        }
+
+        if (isNaN(k)) {
+            const kpVals = historyValues(kpHistory);
+            if (kpVals.length > 0) {
+                const last = kpVals[kpVals.length - 1];
+                markHealth("solar", "degraded", "Using stale data");
+                el.innerHTML = `<div class="item">Kp: <span style="color:#ffaa00">${last.toFixed(2)}</span></div><div class="item">Status: <span style="color:#ffaa00">STALE</span></div>`;
+            } else {
+                markHealth("solar", "degraded", "Waiting for fresh data");
+                el.innerHTML = "Waiting for Kp data";
+            }
+            renderGraphHealth("solar", "solarHealth");
+            return;
+        }
+
+        const time = latestEntry?.time ?? nowLabel();
+        pushHistoryPoint(kpHistory, k, SOLAR_HISTORY_POINTS, time);
+
+        let plasmaDensity = null;
+        if (Array.isArray(plasmaData) && plasmaData.length > 1) {
+            for (let i = plasmaData.length - 1; i >= 1; i--) {
+                const row = plasmaData[i];
+                if (!Array.isArray(row) || row.length < 2) continue;
+                const parsed = parseFloat(row[1]);
+                if (!isNaN(parsed)) {
+                    plasmaDensity = parsed;
+                    pushHistoryPoint(solarWindHistory, parsed, SOLAR_HISTORY_POINTS, row[0]);
+                    break;
+                }
+            }
+        }
+
+        saveTrendHistory();
+
+        const kpVals = historyValues(kpHistory);
+
+        let status = "CALM";
+        let color = "#00ffcc";
+        if (k >= 5) { status = "STORM"; color = "#ff3333"; }
+        else if (k >= 4) { status = "ELEVATED"; color = "#ffaa00"; }
+
+        const kpMax24h = Math.max(...kpVals);
+        const kpAvg24h = kpVals.reduce((sum, val) => sum + val, 0) / kpVals.length;
+        const kpTrend = computeTrendSignal(kpVals, 0.25, -0.25);
+
+        let plasmaLine = "";
+        if (plasmaDensity !== null) {
+            const swVals = historyValues(solarWindHistory);
+            const swTrend = computeTrendSignal(swVals, 0.4, -0.4);
+            plasmaLine = `<div class="item" style="font-size:10px;opacity:0.8;">Solar wind plasma: ${plasmaDensity.toFixed(2)} p/cm³ | Trend: <span style="color:${swTrend.color}">${swTrend.label}</span></div>`;
+        }
+
+        markHealth("solar", "ok", `${TREND_WINDOW_HOURS}h trend`);
+        el.innerHTML = `
+            <div class="item">Kp: <span style="color:${color}">${k.toFixed(2)}</span></div>
+            <div class="item">Status: <span style="color:${color}">${status}</span></div>
+            <div class="item" style="font-size:10px;opacity:0.8;">24h Max: ${kpMax24h.toFixed(2)} | Avg: ${kpAvg24h.toFixed(2)} | Trend: <span style="color:${kpTrend.color}">${kpTrend.label}</span></div>
+            ${plasmaLine}
+            <div class="item" style="font-size:10px;opacity:0.6;">Updated: ${escapeHtml(time)}</div>
+        `;
+        drawChart("kpChart", kpHistory, 9, { yLabel: "Kp", xLabel: "Time" });
+        renderGraphHealth("solar", "solarHealth");
+    } catch (err) {
+        console.error("Solar Error:", err);
+        markHealth("solar", "offline", "Solar feed unavailable");
+        el.innerHTML = "Offline";
+        renderGraphHealth("solar", "solarHealth");
+    }
+}
+
+/* ---------------- SCHUMANN ---------------- */
+async function loadSchumann() {
+    const el = document.getElementById("schumann");
+
+    try {
+        const data = await fetchJson(apiUrl("/schumann-response"), { timeoutMs: 6000, retries: 0 });
+        const responseValue = toNumber(data?.value, null);
+
+        if (responseValue === null) {
+            throw new Error("Schumann source returned no numeric value");
+        }
+
+        const observedAt = data?.observed_at || nowLabel();
+        const unit = data?.unit || "a.u.";
+        pushHistoryPoint(schumannHistory, responseValue, SCHUMANN_HISTORY_POINTS, observedAt);
+        saveTrendHistory();
+
+        let color = "#00ffcc";
+        if (responseValue > 30) color = "#ff3333";
+        else if (responseValue > 20) color = "#ffaa00";
+
+        const schVals = historyValues(schumannHistory);
+        const schMax24h = Math.max(...schVals);
+        const schAvg24h = schVals.reduce((sum, val) => sum + val, 0) / schVals.length;
+        const schTrend = computeTrendSignal(schVals, 1.5, -1.5);
+        const source = data?.source || "configured-source";
+        const mode = data?.mode || "live";
+
+        markHealth("schumann", "ok", `Source: ${mode}`);
+        el.innerHTML = `
+            <div class="item">Response: <span style="color:${color}">${responseValue.toFixed(2)} ${escapeHtml(unit)}</span></div>
+            <div class="item" style="font-size:10px;opacity:0.8;">24h Max: ${schMax24h.toFixed(2)} | Avg: ${schAvg24h.toFixed(2)} | Trend: <span style="color:${schTrend.color}">${schTrend.label}</span></div>
+            <div class="item" style="font-size:10px;opacity:0.7;">Source: ${escapeHtml(source)} | Updated: ${escapeHtml(formatEventTime(observedAt).replace("Time: ", ""))}</div>
+        `;
+
+        drawChart("schumannChart", schumannHistory, 60, { yLabel: "Resp", xLabel: "Time" });
+        checkCorrelation(responseValue);
+        renderGraphHealth("schumann", "schumannHealth");
+
+    } catch (err) {
+        markHealth("schumann", "offline", "No Schumann source configured");
+        el.innerHTML = `Offline<div class="item" style="font-size:10px;opacity:0.7;">${escapeHtml(err?.message || "Unknown source error")}</div>`;
+        renderGraphHealth("schumann", "schumannHealth");
+    }
+}
+
+/* ---------------- CORRELATION (Visual Only) ---------------- */
+function checkCorrelation(density) {
+    const kpVals = historyValues(kpHistory);
+    const kp = kpVals[kpVals.length - 1];
+    if (typeof kp === "number" && kp >= 5 && density > 10) {
+        document.getElementById("solar").classList.add("alert");
+        document.getElementById("schumann").classList.add("alert");
+        // Audio alert removed to prevent browser context errors and freezing
+        setTimeout(()=>{
+            document.getElementById("solar").classList.remove("alert");
+            document.getElementById("schumann").classList.remove("alert");
+        },5000);
+    }
+}
+
+/* ---------------- QUAKES ---------------- */
+async function loadQuakes() {
+    try {
+        const [day, sig] = await Promise.all([
+            fetchJson("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/1.0_day.geojson"),
+            fetchJson("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_hour.geojson")
+        ]);
+
+        const dayFeatures = Array.isArray(day?.features) ? day.features : [];
+        const sigFeatures = Array.isArray(sig?.features) ? sig.features : [];
+
+        const byId = new Map();
+        [...sigFeatures, ...dayFeatures].forEach((q) => {
+            if (!q || !q.id || !q.properties) return;
+            byId.set(q.id, q);
+        });
+
+        const combined = [...byId.values()]
+            .sort((a, b) => (b?.properties?.mag ?? -Infinity) - (a?.properties?.mag ?? -Infinity))
+            .slice(0,5);
+
+        quakesItems = combined.map((q) => ({
+            mag: toNumber(q?.properties?.mag, "N/A"),
+            place: q?.properties?.place ?? "Unknown location",
+            url: q?.properties?.url ?? "#",
+            time: q?.properties?.time
+        }));
+        quakesStatus = quakesItems.length > 0 ? "" : "No recent quake entries";
+        markHealth("quakes", quakesItems.length > 0 ? "ok" : "degraded", quakesItems.length > 0 ? "" : "No recent entries");
+        renderQuakesPanel();
+
+    } catch (err) {
+        console.error("Earthquakes error:", err);
+        quakesStatus = quakesItems.length > 0 ? "Earthquake feed stale" : "Earthquake feed offline";
+        markHealth("quakes", quakesItems.length > 0 ? "degraded" : "offline", "USGS fetch failed");
+        renderQuakesPanel();
+    }
+}
+
+/* ---------------- TSUNAMI ---------------- */
+async function loadTsunami() {
+    try {
+        let data;
+        let source = "proxy";
+        try {
+            data = await fetchJson(apiUrl("/tsunami-alerts"), { timeoutMs: 6000, retries: 1 });
+        } catch (_) {
+            source = "direct";
+            data = await fetchJson("https://api.weather.gov/alerts/active?status=actual&message_type=alert", { timeoutMs: 7000, retries: 1 });
+        }
+        const features = Array.isArray(data?.features) ? data.features : [];
+        const filtered = source === "proxy"
+            ? features
+            : features.filter((f) => isTsunamiRelated(f) && isCriticalAlert(f));
+
+        tsunamiItems = sortTsunamiFeatures(filtered)
+            .slice(0, 5)
+            .map((a) => {
+                const p = a?.properties ?? {};
+                const event = p.event ?? "Tsunami-related alert";
+                const area = p.areaDesc ?? "Unknown area";
+                return {
+                    label: `${event}: ${area}`,
+                    url: p.uri ?? p.id ?? "#",
+                    time: p.sent || p.effective || p.onset
+                };
+            });
+
+        tsunamiStatus = "";
+        markHealth("tsunami", "ok", `Source: ${source}`);
+        renderQuakesPanel();
+
+    } catch (err) {
+        console.error("Tsunami error:", err);
+        tsunamiStatus = tsunamiItems.length > 0 ? "Tsunami feed stale" : "Tsunami feed offline";
+        markHealth("tsunami", tsunamiItems.length > 0 ? "degraded" : "offline", "Proxy + direct fetch failed");
+        renderQuakesPanel();
+    }
+}
+
+/* ---------------- VOLCANO ---------------- */
+async function loadVolcano() {
+    const el = document.getElementById("volcano");
+    try {
+        const data = await fetchJson("https://eonet.gsfc.nasa.gov/api/v3/events?category=volcanoes", { timeoutMs: 8000, retries: 1 });
+        const events = Array.isArray(data?.events) ? data.events : [];
+
+        if (events.length === 0) {
+            markHealth("volcano", "degraded", "No active events");
+            setWidgetHtml(el, "volcano", "No active volcano events");
+            return;
+        }
+
+        markHealth("volcano", "ok");
+        setWidgetHtml(el, "volcano", events.slice(0, 4).map((v) => {
+            const geometries = Array.isArray(v?.geometry) ? v.geometry : [];
+            const latest = geometries.length > 0 ? geometries[geometries.length - 1] : null;
+            const first = geometries.length > 0 ? geometries[0] : null;
+            const startedTs = parseTimeMs(first?.date);
+            const latestTs = parseTimeMs(latest?.date);
+            const activeDays = (startedTs && latestTs) ? Math.max(1, Math.round((latestTs - startedTs) / 86400000)) : null;
+            const categories = Array.isArray(v?.categories) ? v.categories.map((c) => c?.title).filter(Boolean).join(", ") : "Volcanoes";
+            const sourceUrl = Array.isArray(v?.sources) && v.sources[0]?.url ? safeHref(v.sources[0].url) : "#";
+            const coords = Array.isArray(latest?.coordinates) ? latest.coordinates : [];
+            const loc = coords.length >= 2 ? `${toNumber(coords[1], 0).toFixed(2)}, ${toNumber(coords[0], 0).toFixed(2)}` : "N/A";
+
+            return `
+                <div class="neo-item">
+                    <div class="neo-top">
+                        <div class="neo-name">${escapeHtml(v?.title ?? "Unnamed event")}</div>
+                        <span class="neo-badge neo-close">${escapeHtml(v?.closed ? "Closed" : "Active")}</span>
+                    </div>
+                    <div class="neo-meta">Category: ${escapeHtml(categories)}</div>
+                    <div class="neo-meta">Start: ${escapeHtml(formatEventTime(first?.date).replace("Time: ", ""))} | Latest: ${escapeHtml(formatEventTime(latest?.date).replace("Time: ", ""))}</div>
+                    <div class="neo-meta">Active Days: ${activeDays !== null ? activeDays : "N/A"} | Coordinates: ${escapeHtml(loc)}</div>
+                    <div class="neo-meta">Pyroclastic Flow Rate: N/A (not provided by EONET)</div>
+                    <div class="neo-meta"><a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" style="color:#9fc5e8;text-decoration:none;">Source</a></div>
+                </div>
+            `;
+        }).join(""));
+
+    } catch (err) {
+        console.error("Volcano error:", err);
+        markHealth("volcano", "offline", "EONET unavailable");
+        setWidgetHtml(el, "volcano", "Offline");
+    }
+}
+
+/* ---------------- NEOS ---------------- */
+async function loadNEOs() {
+    const el = document.getElementById("neos");
+    try {
+        const today = new Date().toISOString().split("T")[0];
+        let data;
+        let source = "proxy";
+        try {
+            data = await fetchJson(apiUrl(`/neos?date=${today}`), { timeoutMs: 7000, retries: 1 });
+        } catch (_) {
+            source = "direct";
+            try {
+                const direct = await fetchJson(`https://api.nasa.gov/neo/rest/v1/feed?start_date=${today}&end_date=${today}&api_key=DEMO_KEY`, { timeoutMs: 8000, retries: 0 });
+                const rawList = Array.isArray(direct?.near_earth_objects?.[today]) ? direct.near_earth_objects[today] : [];
+                data = {
+                    asteroids: rawList.map((a) => ({
+                        name: a?.name ?? "Unnamed object",
+                        hazardous: !!a?.is_potentially_hazardous_asteroid,
+                        url: a?.nasa_jpl_url ?? "",
+                        miss_distance_km: toNumber(a?.close_approach_data?.[0]?.miss_distance?.kilometers, null),
+                        miss_distance_lunar: toNumber(a?.close_approach_data?.[0]?.miss_distance?.lunar, null),
+                        velocity_kph: toNumber(a?.close_approach_data?.[0]?.relative_velocity?.kilometers_per_hour, null),
+                        size_min_m: toNumber(a?.estimated_diameter?.meters?.estimated_diameter_min, null),
+                        size_max_m: toNumber(a?.estimated_diameter?.meters?.estimated_diameter_max, null),
+                        approach_time: a?.close_approach_data?.[0]?.close_approach_date_full ?? null,
+                        proximity_class: neoClassFromDistance(a?.close_approach_data?.[0]?.miss_distance?.kilometers)
+                    }))
+                };
+            } catch (_) {
+                source = "jpl";
+                data = { asteroids: await fetchJplNeoFallback() };
+            }
+        }
+        const asteroids = Array.isArray(data?.asteroids) ? data.asteroids : [];
+        const nearest = sortNeosByDistance(asteroids).slice(0, 3);
+
+        if (nearest.length === 0) {
+            markHealth("neos", "degraded", `No objects (${source})`);
+            setWidgetHtml(el, "neos", "No tracked NEOs today");
+            return;
+        }
+
+        try {
+            localStorage.setItem("neos_cache", JSON.stringify({
+                savedAt: Date.now(),
+                asteroids: nearest
+            }));
+        } catch (_) {
+            // cache is optional
+        }
+
+        markHealth("neos", "ok", `Source: ${source} | Showing nearest 3`);
+        setWidgetHtml(el, "neos", renderNeoItems(nearest, 3));
+
+    } catch (err) {
+        console.error("NEO error:", err);
+        try {
+            const cachedRaw = localStorage.getItem("neos_cache");
+            if (cachedRaw) {
+                const cached = JSON.parse(cachedRaw);
+                const asteroids = Array.isArray(cached?.asteroids) ? cached.asteroids : [];
+                if (asteroids.length > 0) {
+                    markHealth("neos", "degraded", "Rate-limited; using cached data");
+                    setWidgetHtml(el, "neos", renderNeoItems(sortNeosByDistance(asteroids).slice(0, 3), 3));
+                    return;
+                }
+            }
+        } catch (_) {
+            // ignore cache parse errors
+        }
+
+        markHealth("neos", "offline", `NEO fetch failed: ${err?.message || "unknown error"}`);
+        setWidgetHtml(el, "neos", "Offline");
+    }
+}
+
+/* ---------------- WEATHER ---------------- */
+async function loadAlerts() {
+    const el = document.getElementById("alerts");
+    try {
+        const data = await fetchJson("https://api.weather.gov/alerts/active?area=TX", { timeoutMs: 8000, retries: 1 });
+        const features = Array.isArray(data?.features) ? data.features : [];
+        const ranked = sortNwsAlerts(features);
+        const displayAlerts = alertsCriticalOnly ? ranked.filter(isCriticalAlert) : ranked;
+
+        if (displayAlerts.length === 0) {
+            if (ranked.length > 0 && alertsCriticalOnly) {
+                markHealth("alerts", "degraded", "Critical-only mode: no critical alerts");
+                setWidgetHtml(el, "alerts", "No critical TX alerts");
+            } else {
+                markHealth("alerts", "degraded", "No active alerts");
+                setWidgetHtml(el, "alerts", "No active TX alerts");
+            }
+            return;
+        }
+
+        markHealth("alerts", "ok", alertsCriticalOnly ? "Critical-only mode" : "All alerts mode");
+        setWidgetHtml(el, "alerts", displayAlerts.slice(0,7).map(a =>
+            `<div class="item">
+            <a href="${safeHref(a?.id)}" target="_blank" rel="noopener noreferrer" style="color:#ffaa00; text-decoration:none;">
+            ${escapeHtml(a?.properties?.event ?? "Weather Alert")} <br>
+            <span style="font-size: 10px; color: #cccccc; font-weight: normal;">${escapeHtml(a?.properties?.areaDesc ?? "Unknown area")}</span>
+            </a></div>`
+        ).join(""));
+
+    } catch (err) {
+        console.error("TX alerts error:", err);
+        markHealth("alerts", "offline", "NWS alerts fetch failed");
+        setWidgetHtml(el, "alerts", "Offline");
+    }
+}
+
+/* ---------------- Current Conditions & Moon Phase ---------------- */
+async function loadWeather() {
+    const el = document.getElementById("weather");
+    const lat = APP_CONFIG.location.lat;
+    const lon = APP_CONFIG.location.lon;
+    const locationLabel = APP_CONFIG.location.label;
+
+    try {
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,uv_index,precipitation_probability&daily=moon_phase&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
+        const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`;
+
+        const [weatherRes, airRes] = await Promise.all([
+            fetchJson(weatherUrl, { timeoutMs: 8000, retries: 1 }),
+            fetchJson(airUrl, { timeoutMs: 8000, retries: 1 }).catch(() => ({ current: { us_aqi: null } }))
+        ]);
+
+        let cur = weatherRes.current;
+
+        if (weatherRes?.error) {
+            throw new Error(String(weatherRes.reason || "Weather API returned an error"));
+        }
+
+        if (!cur && weatherRes?.hourly) {
+            cur = {
+                temperature_2m: weatherRes.hourly.temperature_2m?.[0],
+                relative_humidity_2m: weatherRes.hourly.relative_humidity_2m?.[0],
+                wind_speed_10m: weatherRes.hourly.wind_speed_10m?.[0],
+                uv_index: weatherRes.hourly.uv_index?.[0]
+            };
+        }
+
+        if (!cur) throw new Error("Weather Data Missing");
+
+        const temp = toNumber(cur.temperature_2m, null);
+        const feelsLike = toNumber(cur.apparent_temperature, toNumber(weatherRes?.hourly?.apparent_temperature?.[0], null));
+        const humidity = toNumber(cur.relative_humidity_2m, null);
+        const wind = toNumber(cur.wind_speed_10m, null);
+        const uv = toNumber(cur.uv_index, null);
+        const precipChance = toNumber(weatherRes?.hourly?.precipitation_probability?.[0], null);
+        const aqi = toNumber(airRes?.current?.us_aqi, null);
+        const apiMoonPhase = weatherRes?.daily?.moon_phase?.[0];
+        const phase = moonPhaseLabel(apiMoonPhase ?? calculateMoonPhaseFraction(new Date()));
+
+        markHealth("weather", "ok");
+        setWidgetHtml(el, "weather", `
+            <div class="item" style="font-size:10px;opacity:0.7;">Location: ${escapeHtml(locationLabel)}</div>
+            <div class="item">Temp: <span style="color:#00ffcc">${temp !== null ? `${temp.toFixed(1)}°F` : "N/A"}</span> | Feels: ${feelsLike !== null ? `${feelsLike.toFixed(1)}°F` : "N/A"}</div>
+            <div class="item">Humidity: ${humidity !== null ? `${humidity}%` : "N/A"} | Wind: ${wind !== null ? `${wind.toFixed(1)} mph` : "N/A"}</div>
+            <div class="item">Precip: ${precipChance !== null ? `${Math.round(precipChance)}%` : "N/A"} | UV: ${uv !== null ? uv : "N/A"}</div>
+            <div class="item">AQI: <span style="color:${aqi !== null && aqi > 50 ? '#ffaa00' : '#00ffcc'}">${aqi !== null ? aqi : "N/A"}</span></div>
+            <div class="item" style="border-top:1px solid rgba(255,255,255,0.1); margin-top:5px; padding-top:5px;">
+                🌙 ${escapeHtml(phase)}
+            </div>
+            <div class="item" style="font-size:10px;opacity:0.6;">Updated: ${nowLabel()}</div>
+        `);
+    } catch (err) {
+        console.error("Weather error:", err);
+        markHealth("weather", "offline", "Open-Meteo fetch failed");
+        setWidgetHtml(el, "weather", "Weather Offline");
+    }
+}
+
+/* ---------------- CHART ---------------- */
+function drawChart(id, data, maxVal, options = {}) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    if (!data || data.length < 2) return;
+
+    const points = data.map((entry, index) => {
+        if (typeof entry === "number") {
+            return { ts: Date.now() - ((data.length - index) * 60000), value: entry };
+        }
+        return { ts: parseTimeMs(entry?.ts) || Date.now(), value: toNumber(entry?.value, null) };
+    }).filter((p) => p.value !== null);
+
+    if (points.length < 2) return;
+
+    canvas.width = canvas.clientWidth || 300 ;
+    canvas.height = canvas.clientHeight || 80;
+
+    const padL = 34;
+    const padR = 8;
+    const padT = 8;
+    const padB = 16;
+    const plotW = canvas.width - padL - padR;
+    const plotH = canvas.height - padT - padB;
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.font = "10px Arial";
+
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT);
+    ctx.lineTo(padL, padT + plotH);
+    ctx.lineTo(padL + plotW, padT + plotH);
+    ctx.stroke();
+
+    const yTicks = 4;
+    for (let i = 0; i <= yTicks; i++) {
+        const ratio = i / yTicks;
+        const y = padT + plotH - (ratio * plotH);
+        const val = ratio * maxVal;
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + plotW, y);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(215,225,235,0.85)";
+        ctx.fillText(val.toFixed(0), 2, y + 3);
+    }
+
+    const minTs = points[0].ts;
+    const maxTs = points[points.length - 1].ts;
+    const span = Math.max(1, maxTs - minTs);
+
+    const xTicks = 3;
+    for (let i = 0; i <= xTicks; i++) {
+        const ratio = i / xTicks;
+        const x = padL + ratio * plotW;
+        const ts = minTs + ratio * span;
+        const label = new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        ctx.fillStyle = "rgba(215,225,235,0.85)";
+        ctx.fillText(label, x - 16, canvas.height - 2);
+    }
+
+    ctx.beginPath();
+    points.forEach((point, i) => {
+        const x = padL + ((point.ts - minTs) / span) * plotW;
+        const y = padT + plotH - (Math.min(maxVal, Math.max(0, point.value)) / maxVal) * plotH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+
+    let color = "#00ffcc";
+    const latest = points[points.length - 1].value;
+
+    if (latest > maxVal * 0.7) color = "#ff3333";
+    else if (latest > maxVal * 0.5) color = "#ffaa00";
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    if (options.yLabel) {
+        ctx.fillStyle = "rgba(215,225,235,0.9)";
+        ctx.fillText(options.yLabel, 2, 10);
+    }
+    if (options.xLabel) {
+        ctx.fillStyle = "rgba(215,225,235,0.9)";
+        ctx.fillText(options.xLabel, canvas.width - 30, canvas.height - 2);
+    }
+}
+
+/* ---------------- LOOPS ---------------- */
+const ADAPTIVE_POLLS = {
+    quakes: { base: 60000, retry: 15000, max: 240000 },
+    tsunami: { base: 120000, retry: 30000, max: 300000 },
+    solar: { base: SOLAR_INTERVAL_MS, retry: 15000, max: 240000 },
+    schumann: { base: SCHUMANN_INTERVAL_MS, retry: 15000, max: 240000 },
+    volcano: { base: 300000, retry: 60000, max: 900000 },
+    alerts: { base: 300000, retry: 60000, max: 900000 },
+    neos: { base: 3600000, retry: 180000, max: 3600000 },
+    weather: { base: 600000, retry: 120000, max: 1800000 },
+    radar: { base: 300000, retry: 60000, max: 900000 }
+};
+
+async function initializeDashboard() {
+    await loadRuntimeConfig();
+    await restoreTrendHistory();
+    startBackgroundRotation();
+    renderHeartbeat();
+    updateAlertsModeButton();
+
+    loadSystem();
+    setInterval(loadSystem, 10000);
+    startAdaptivePoll("quakes", loadQuakes, ADAPTIVE_POLLS.quakes);
+    startAdaptivePoll("tsunami", loadTsunami, ADAPTIVE_POLLS.tsunami);
+    startAdaptivePoll("solar", loadSolar, ADAPTIVE_POLLS.solar);
+    startAdaptivePoll("schumann", loadSchumann, ADAPTIVE_POLLS.schumann);
+    startAdaptivePoll("volcano", loadVolcano, ADAPTIVE_POLLS.volcano);
+    startAdaptivePoll("alerts", loadAlerts, ADAPTIVE_POLLS.alerts);
+    startAdaptivePoll("neos", loadNEOs, ADAPTIVE_POLLS.neos);
+    startAdaptivePoll("weather", loadWeather, ADAPTIVE_POLLS.weather);
+    startAdaptivePoll("radar", loadRadarSnapshot, ADAPTIVE_POLLS.radar);
+}
+
+initializeDashboard();
+
+/* ------------- Manual Refresh Button ------------ */
+function manualRefresh() {
+    console.log("Manual refresh triggered");
+
+    loadQuakes();
+    loadTsunami();
+    loadSolar();
+    loadSchumann();
+    loadVolcano();
+    loadSystem();
+    loadAlerts();
+    loadNEOs();
+    loadWeather();
+    loadRadarSnapshot();
+}
+
+// Button hook
+document.getElementById("refreshBtn").addEventListener("click", (e) => {
+    if (e.shiftKey) {
+        location.reload(); // HARD reload if Shift is held
+    } else {
+        manualRefresh(); // Soft refresh
+    }
+});
+
+const alertsModeBtn = document.getElementById("alertsModeBtn");
+if (alertsModeBtn) {
+    alertsModeBtn.addEventListener("click", () => {
+        alertsCriticalOnly = !alertsCriticalOnly;
+        try {
+            localStorage.setItem(ALERTS_MODE_KEY, alertsCriticalOnly ? "1" : "0");
+        } catch (_) {
+            // persistence is optional
+        }
+        updateAlertsModeButton();
+        loadAlerts();
+    });
+}
+</script>
+</body>
+</html>
