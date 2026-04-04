@@ -13,6 +13,26 @@ A local situational-awareness dashboard with a static frontend and a Flask API p
 - Interactive radar with pan/zoom, cloud layer, and surface fronts overlay
 - Persistent 24-hour trend history across restarts
 
+## Dashboard Preview
+
+Full dashboard view:
+
+![Dashboard Full](../Screenshots/dashboard-full.png)
+
+Widget snapshots:
+
+![System Monitor](../Screenshots/sysmon.png)
+![Earthquakes](../Screenshots/earthquake.png)
+![Volcano](../Screenshots/volcano.png)
+![Solar](../Screenshots/solar.png)
+![Schumann](../Screenshots/Schumann.png)
+![NEOs](../Screenshots/neos.png)
+![Weather](../Screenshots/weather.png)
+![Alerts](../Screenshots/alerts.png)
+![Radar](../Screenshots/radar.png)
+
+Note: `weather.png` intentionally blurs the local city for privacy.
+
 ## Requirements
 
 - Python 3.10+
