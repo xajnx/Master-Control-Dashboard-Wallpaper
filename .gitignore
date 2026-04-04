@@ -13,6 +13,7 @@ data/schumann_response.json
 /data/
 /dashboard.html
 dashboard.html.bak
+/README.md
 /requirements.txt
 /schumann_adapter.py
 /scripts/
