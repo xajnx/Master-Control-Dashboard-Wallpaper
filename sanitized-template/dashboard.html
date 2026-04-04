@@ -295,7 +295,7 @@ canvas {
 }
 
 .radar-fronts-image {
-    opacity: 0.62;
+    opacity: 0.4;
     filter: saturate(1.2) contrast(1.12);
     mix-blend-mode: screen;
 }
@@ -311,6 +311,7 @@ canvas {
     display: flex;
     align-items: center;
     gap: 4px;
+    flex-wrap: wrap;
 }
 
 .radar-pan-controls {
@@ -339,6 +340,25 @@ canvas {
     min-width: 42px;
     text-align: center;
     opacity: 0.85;
+}
+
+.radar-layer-selector {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.radar-layer-label {
+    font-size: 10px;
+    min-width: 84px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    height: 22px;
+    line-height: 20px;
+    padding: 0 6px;
+    background: rgba(0,0,0,0.35);
+    color: #d6e2ea;
 }
 
 .radar-meta {
@@ -538,6 +558,11 @@ canvas {
         <div class="radar-controls">
             <button id="radarZoomOut" class="radar-btn" type="button" title="Zoom out">-</button>
             <button id="radarZoomIn" class="radar-btn" type="button" title="Zoom in">+</button>
+            <div class="radar-layer-selector">
+                <button id="radarLayerPrev" class="radar-btn" type="button" title="Previous layer view">◀</button>
+                <span id="radarLayerLabel" class="radar-layer-label">Radar+Clouds</span>
+                <button id="radarLayerNext" class="radar-btn" type="button" title="Next layer view">▶</button>
+            </div>
             <div class="radar-pan-controls">
                 <button id="radarPanLeft" class="radar-btn" type="button" title="Pan left">◀</button>
                 <button id="radarPanUp" class="radar-btn" type="button" title="Pan up">▲</button>
@@ -637,6 +662,23 @@ const radarViewState = {
     dragStartY: 0,
     startOffsetX: 0,
     startOffsetY: 0
+};
+const RADAR_LAYER_MODES = ["radar", "fronts"];
+const RADAR_LAYER_LABELS = {
+    radar: "Radar+Clouds",
+    fronts: "Fronts"
+};
+let radarLayerModeIndex = 0;
+const radarRenderState = {
+    host: "",
+    radarPath: "",
+    cloudPath: null,
+    lat: null,
+    lon: null,
+    zoom: null,
+    tileRadius: 1,
+    frontsImageUrl: "",
+    frameKey: Date.now()
 };
 
 try {
@@ -1176,6 +1218,73 @@ function applyRadarViewTransform() {
     updateRadarZoomLabel();
 }
 
+function activeRadarLayerMode() {
+    return RADAR_LAYER_MODES[radarLayerModeIndex] || "radar";
+}
+
+function applyRadarLayerMode() {
+    const cloudLayer = document.getElementById("radarCloudMap");
+    const overlayLayer = document.getElementById("radarOverlayMap");
+    const frontsLayer = document.getElementById("radarFrontsMap");
+    const layerLabel = document.getElementById("radarLayerLabel");
+    const mode = activeRadarLayerMode();
+    const showFronts = mode === "fronts";
+
+    if (cloudLayer) cloudLayer.style.display = showFronts ? "none" : "block";
+    if (overlayLayer) overlayLayer.style.display = showFronts ? "none" : "block";
+    if (frontsLayer) frontsLayer.style.display = showFronts ? "block" : "none";
+    if (layerLabel) layerLabel.textContent = RADAR_LAYER_LABELS[mode] || "Radar";
+}
+
+function shiftRadarCenterByPixels(deltaX, deltaY) {
+    if (!Number.isFinite(radarRenderState.lat) || !Number.isFinite(radarRenderState.lon) || !Number.isFinite(radarRenderState.zoom)) {
+        return;
+    }
+
+    const tileSize = 256;
+    const n = 2 ** radarRenderState.zoom;
+    const worldPixels = tileSize * n;
+    const latRad = radarRenderState.lat * Math.PI / 180;
+
+    const currentX = ((radarRenderState.lon + 180) / 360) * worldPixels;
+    const mercatorY = Math.log(Math.tan((Math.PI / 4) + (latRad / 2)));
+    const currentY = ((1 - (mercatorY / Math.PI)) / 2) * worldPixels;
+
+    const nextX = currentX - deltaX;
+    const nextY = clamp(currentY - deltaY, 0, worldPixels);
+
+    const wrappedX = ((nextX % worldPixels) + worldPixels) % worldPixels;
+    const lon = (wrappedX / worldPixels) * 360 - 180;
+    const yNorm = clamp(1 - ((nextY * 2) / worldPixels), -0.9999, 0.9999);
+    const lat = Math.atan(Math.sinh(yNorm * Math.PI)) * 180 / Math.PI;
+
+    radarRenderState.lon = lon;
+    radarRenderState.lat = lat;
+}
+
+function commitRadarPanIfNeeded(force = false) {
+    const threshold = 120;
+    const shouldCommit = force || Math.abs(radarViewState.offsetX) >= threshold || Math.abs(radarViewState.offsetY) >= threshold;
+    if (!shouldCommit || !radarRenderState.host || !radarRenderState.radarPath) return;
+
+    const offsetX = radarViewState.offsetX;
+    const offsetY = radarViewState.offsetY;
+    shiftRadarCenterByPixels(offsetX, offsetY);
+    radarViewState.offsetX = 0;
+    radarViewState.offsetY = 0;
+    renderRadarTileLayers(
+        radarRenderState.host,
+        radarRenderState.radarPath,
+        radarRenderState.cloudPath,
+        radarRenderState.lat,
+        radarRenderState.lon,
+        radarRenderState.zoom,
+        radarRenderState.tileRadius,
+        radarRenderState.frontsImageUrl,
+        radarRenderState.frameKey
+    );
+}
+
 function setRadarScale(nextScale, anchorX = null, anchorY = null) {
     const stack = document.getElementById("radarStack");
     if (!stack) return;
@@ -1212,12 +1321,15 @@ function panRadarBy(deltaX, deltaY) {
     radarViewState.offsetX += deltaX;
     radarViewState.offsetY += deltaY;
     applyRadarViewTransform();
+    commitRadarPanIfNeeded(true);
 }
 
 function initRadarInteractions() {
     const stack = document.getElementById("radarStack");
     const zoomIn = document.getElementById("radarZoomIn");
     const zoomOut = document.getElementById("radarZoomOut");
+    const layerPrev = document.getElementById("radarLayerPrev");
+    const layerNext = document.getElementById("radarLayerNext");
     const panLeft = document.getElementById("radarPanLeft");
     const panUp = document.getElementById("radarPanUp");
     const panDown = document.getElementById("radarPanDown");
@@ -1260,6 +1372,7 @@ function initRadarInteractions() {
         } catch (_) {
             // release can fail if pointer was already lost
         }
+        commitRadarPanIfNeeded();
     };
 
     stack.addEventListener("pointerup", endDrag);
@@ -1289,6 +1402,7 @@ function initRadarInteractions() {
         if (!mouseDragging) return;
         mouseDragging = false;
         stack.classList.remove("dragging");
+        commitRadarPanIfNeeded();
     });
 
     stack.addEventListener("dragstart", (event) => {
@@ -1319,6 +1433,7 @@ function initRadarInteractions() {
         if (!touchDragging) return;
         touchDragging = false;
         stack.classList.remove("dragging");
+        commitRadarPanIfNeeded();
     };
 
     stack.addEventListener("touchend", endTouchDrag, { passive: true });
@@ -1330,7 +1445,18 @@ function initRadarInteractions() {
     if (zoomOut) {
         zoomOut.addEventListener("click", () => setRadarScale(radarViewState.scale * 0.83));
     }
-    // Button panning remains usable when embedded hosts suppress drag interactions.
+    if (layerPrev) {
+        layerPrev.addEventListener("click", () => {
+            radarLayerModeIndex = (radarLayerModeIndex - 1 + RADAR_LAYER_MODES.length) % RADAR_LAYER_MODES.length;
+            applyRadarLayerMode();
+        });
+    }
+    if (layerNext) {
+        layerNext.addEventListener("click", () => {
+            radarLayerModeIndex = (radarLayerModeIndex + 1) % RADAR_LAYER_MODES.length;
+            applyRadarLayerMode();
+        });
+    }
     const panStep = 42;
     if (panLeft) {
         panLeft.addEventListener("click", () => panRadarBy(panStep, 0));
@@ -1353,6 +1479,7 @@ function initRadarInteractions() {
 
     window.addEventListener("resize", applyRadarViewTransform);
     resetRadarView();
+    applyRadarLayerMode();
 }
 
 function renderRadarTileLayers(host, radarPath, cloudPath, lat, lon, zoom, tileRadius = 1, frontsImageUrl = "", frameKey = Date.now()) {
@@ -1361,6 +1488,16 @@ function renderRadarTileLayers(host, radarPath, cloudPath, lat, lon, zoom, tileR
     const overlayContainer = document.getElementById("radarOverlayMap");
     const frontsContainer = document.getElementById("radarFrontsMap");
     if (!baseContainer || !cloudContainer || !overlayContainer || !frontsContainer) return;
+
+    radarRenderState.host = host;
+    radarRenderState.radarPath = radarPath;
+    radarRenderState.cloudPath = cloudPath;
+    radarRenderState.lat = lat;
+    radarRenderState.lon = lon;
+    radarRenderState.zoom = zoom;
+    radarRenderState.tileRadius = tileRadius;
+    radarRenderState.frontsImageUrl = frontsImageUrl;
+    radarRenderState.frameKey = frameKey;
 
     const center = radarTileXY(lat, lon, zoom);
     const n = 2 ** zoom;
@@ -1411,6 +1548,7 @@ function renderRadarTileLayers(host, radarPath, cloudPath, lat, lon, zoom, tileR
         ? `<img class="radar-fronts-image" loading="lazy" decoding="async" draggable="false" src="${frontImage}" alt="Current frontal analysis">`
         : "";
 
+    applyRadarLayerMode();
     applyRadarViewTransform();
 }
 
