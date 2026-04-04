@@ -29,7 +29,13 @@ body {
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 0.95fr 1.1fr 1.35fr;
+    grid-template-rows: 0.9fr 1.05fr 1fr 1.15fr;
+    grid-template-areas:
+        "system quakes schumann"
+        "solar quakes schumann"
+        "volcano neos radar"
+        "alerts weather radar";
     gap: 8px;
     padding: 8px;
     height: 100vh;
@@ -48,8 +54,13 @@ body {
     min-height: 0;
 }
 
+.panel.is-stale {
+    border-color: rgba(255,209,102,0.45);
+    box-shadow: inset 0 0 0 1px rgba(255,209,102,0.14);
+}
+
 .title {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: bold;
     opacity: 0.85;
     display: flex;
@@ -81,15 +92,15 @@ body {
 }
 
 .desc {
-    font-size: 10px;
+    font-size: 9.5px;
     opacity: 0.6;
-    margin-top: 4px;
+    margin-top: 3px;
 }
 
 .list {
-    font-size: 14px;
-    line-height: 1.6;
-    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    margin-top: 8px;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -128,7 +139,164 @@ body {
 }
 
 .item {
+    margin-bottom: 2px;
+}
+
+.panel-system { grid-area: system; }
+.panel-quakes { grid-area: quakes; }
+.panel-volcano { grid-area: volcano; }
+.panel-solar { grid-area: solar; }
+.panel-schumann { grid-area: schumann; }
+.panel-neos { grid-area: neos; }
+.panel-weather { grid-area: weather; }
+.panel-alerts { grid-area: alerts; }
+.panel-radar { grid-area: radar; }
+
+.panel.panel-compact {
+    padding: 7px;
+}
+
+.panel-neos .neo-item {
     margin-bottom: 4px;
+}
+
+.panel-neos .neo-top {
+    margin-bottom: 1px;
+}
+
+.panel-neos .neo-name {
+    font-size: 12px;
+}
+
+.panel-neos .neo-meta {
+    font-size: 9px;
+    line-height: 1.25;
+}
+
+.panel-alerts .item {
+    margin-bottom: 1px;
+    line-height: 1.25;
+}
+
+.panel-alerts .item a {
+    display: block;
+    font-size: 12px;
+}
+
+@media (max-width: 1220px) {
+    .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: none;
+        grid-template-areas:
+            "system solar"
+            "quakes quakes"
+            "schumann schumann"
+            "radar radar"
+            "volcano neos"
+            "alerts weather";
+        height: auto;
+        min-height: 100vh;
+    }
+}
+
+@media (max-width: 760px) {
+    .grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "system"
+            "solar"
+            "quakes"
+            "schumann"
+            "radar"
+            "volcano"
+            "neos"
+            "alerts"
+            "weather";
+    }
+}
+
+@media (max-height: 900px) {
+    #schumannChart {
+        height: 92px !important;
+    }
+}
+
+@media (max-width: 1400px) and (max-height: 820px) {
+    .grid {
+        gap: 6px;
+        padding: 6px;
+        grid-template-columns: 0.9fr 1.04fr 1.28fr;
+        grid-template-rows: 0.82fr 0.96fr 0.92fr 1.12fr;
+    }
+
+    .panel {
+        padding: 6px;
+    }
+
+    .panel.panel-compact {
+        padding: 6px;
+    }
+
+    .title {
+        font-size: 12px;
+    }
+
+    .desc {
+        font-size: 9px;
+        margin-top: 2px;
+    }
+
+    .list {
+        font-size: 12px;
+        line-height: 1.32;
+        margin-top: 6px;
+    }
+
+    .item {
+        margin-bottom: 1px;
+    }
+
+    canvas {
+        height: 84px;
+        margin-top: 6px;
+    }
+
+    #schumannChart {
+        height: 86px !important;
+    }
+
+    .schumann-spectrogram-image {
+        height: 96px;
+    }
+
+    .widget-scroll {
+        padding-right: 1px;
+    }
+
+    .radar-stack {
+        min-height: 146px;
+    }
+
+    .radar-toolbar {
+        gap: 6px;
+    }
+
+    .radar-btn {
+        min-width: 22px;
+        height: 20px;
+        font-size: 10px;
+    }
+
+    .radar-layer-label {
+        min-width: 76px;
+        height: 20px;
+        line-height: 18px;
+        font-size: 9px;
+    }
+
+    .radar-meta {
+        font-size: 9px;
+    }
 }
 
 .weather-layout {
@@ -366,6 +534,81 @@ canvas {
     opacity: 0.7;
 }
 
+.schumann-layer-note {
+    font-size: 10px;
+    opacity: 0.78;
+}
+
+#schumann,
+#schumannSpectrogramStatus {
+    flex: 0 0 auto;
+    overflow: visible;
+    margin-top: 6px;
+}
+
+#schumannSpectrogramStatus {
+    margin-top: 4px;
+}
+
+.schumann-spectrogram-wrap {
+    margin-top: 8px;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(6,10,14,0.7);
+}
+
+.schumann-spectrogram-image {
+    display: block;
+    width: 100%;
+    height: 118px;
+    object-fit: cover;
+    background: rgba(0,0,0,0.35);
+        height: 96px;
+
+.schumann-status-row {
+    font-size: 9px;
+    line-height: 1.2;
+    opacity: 0.82;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.schumann-spectrogram-error {
+    font-size: 10px;
+    line-height: 1.3;
+    padding: 6px 8px;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,209,102,0.10);
+    color: #ffd166;
+    word-break: break-word;
+}
+
+.schumann-spectrogram-error.offline {
+    background: rgba(255,80,80,0.12);
+    color: #ff9d9d;
+}
+
+.schumann-spectrogram-error.hidden {
+    display: none;
+}
+
+.schumann-delta-alert {
+    color: #ffd166;
+}
+
+.schumann-event-marker {
+    font-size: 10px;
+    font-weight: bold;
+    border: 1px solid rgba(255,80,80,0.75);
+    border-radius: 4px;
+    color: #ffe8e8;
+    background: rgba(255,40,40,0.22);
+    padding: 2px 6px;
+    margin: 4px 0 6px;
+}
+
 .health {
     margin-top: 6px;
     font-size: 10px;
@@ -498,23 +741,23 @@ canvas {
 
 <div class="grid">
 
-<div class="panel">
+<div class="panel panel-system panel-compact">
 <div class="title"><span class="hb-dot unknown" id="led-system" title="SYS"></span>💻 System Monitor</div>
 <div id="system" class="list"></div>
 </div>
 
-<div class="panel">
+<div class="panel panel-quakes">
 <div class="title"><span class="hb-dot unknown" id="led-quakes" title="EQ"></span><span class="hb-dot unknown" id="led-tsunami" title="TSU"></span>🌍 Earthquakes / Tsunami</div>
 <div class="desc">Recent seismic activity. Higher magnitude = stronger event.</div>
 <div id="quakes" class="list"></div>
 </div>
 
-<div class="panel">
+<div class="panel panel-volcano panel-compact">
 <div class="title"><span class="hb-dot unknown" id="led-volcano" title="VOL"></span>🌋 Volcano Activity</div>
 <div id="volcano" class="list"></div>
 </div>
 
-<div class="panel">
+<div class="panel panel-solar">
 <div class="title"><span class="hb-dot unknown" id="led-solar" title="SOL"></span>☀️ Solar Activity</div>
 <div class="desc">Kp Index (0–9). 5+ indicates geomagnetic storm conditions.</div>
 <div id="solar" class="list"></div>
@@ -522,27 +765,39 @@ canvas {
 <div id="solarHealth"></div>
 </div>
 
-<div class="panel">
+<div class="panel panel-schumann">
 <div class="title"><span class="hb-dot unknown" id="led-schumann" title="SCH"></span>📡 Schumann Monitor</div>
-<div class="desc">Schumann response amplitude from a configured real-time source.</div>
+<div class="desc">Driver + effect view: SRI forcing proxy and observed ELF spectrogram.</div>
+<div class="widget-scroll">
+<div style="font-size:10px;opacity:0.75;margin:6px 0;display:flex;gap:12px;flex-wrap:wrap;">
+    <div><span style="color:#ff3333;">█</span> SRI >30</div>
+    <div><span style="color:#ffaa00;">█</span> SRI 20–30</div>
+    <div><span style="color:#00ffcc;">█</span> SRI 0–20</div>
+</div>
 <div id="schumann" class="list"></div>
-<canvas id="schumannChart"></canvas>
+<canvas id="schumannChart" style="height:100px;"></canvas>
+<div id="schumannSpectrogramStatus" class="list"></div>
+<div class="schumann-spectrogram-wrap">
+    <img id="schumannSpectrogramImage" class="schumann-spectrogram-image" alt="Schumann resonance spectrogram" loading="lazy" decoding="async" draggable="false">
+    <div id="schumannSpectrogramError" class="schumann-spectrogram-error hidden"></div>
+</div>
+</div>
 <div id="schumannHealth"></div>
 </div>
 
-<div class="panel">
+<div class="panel panel-neos">
 <div class="title"><span class="hb-dot unknown" id="led-neos" title="NEO"></span>☄️ Near-Earth Objects</div>
 <div id="neos" class="list"></div>
 </div>
 
-<div class="panel">
+<div class="panel panel-weather">
 <div class="title"><span class="hb-dot unknown" id="led-weather" title="WX"></span>⛅ Current Conditions</div>
 <div id="weather" class="list">
     <div class="item">Loading local data...</div>
 </div>
 </div>
 
-<div class="panel">
+<div class="panel panel-alerts panel-compact">
 <div class="title-row">
     <div class="title"><span class="hb-dot unknown" id="led-alerts" title="ALR"></span>⚠️ Texas Weather Alerts</div>
     <button id="alertsModeBtn" class="alerts-toggle" type="button" title="Toggle critical-only alerts">Critical: Off</button>
@@ -550,7 +805,7 @@ canvas {
 <div id="alerts" class="list"></div>
 </div>
 
-<div class="panel">
+<div class="panel panel-radar">
 <div class="title"><span class="hb-dot unknown" id="led-radar" title="RAD"></span>🌪️ Radar</div>
 <div class="desc">Interactive radar with cloud and frontal overlays.</div>
 <div class="radar-wrap">
@@ -604,8 +859,9 @@ let trendSyncTimer = null;
 const FETCH_DEFAULT_TIMEOUT = 9000;
 const FETCH_DEFAULT_RETRIES = 1;
 const LOCAL_HOST = window.location.hostname || "localhost";
-const API_BASE = `${window.location.protocol.startsWith("http") ? window.location.protocol : "http:"}//${LOCAL_HOST}:5000`;
-const ASSETS_BASE = window.location.protocol.startsWith("http") ? window.location.origin : "http://localhost:8080";
+const IS_HTTP_CONTEXT = window.location.protocol.startsWith("http");
+const API_BASE = IS_HTTP_CONTEXT ? `${window.location.protocol}//${LOCAL_HOST}:5000` : "http://localhost:5000";
+const ASSETS_BASE = IS_HTTP_CONTEXT ? window.location.origin : "";
 const DEFAULT_APP_CONFIG = {
     location: {
         label: "Winona, TX",
@@ -618,6 +874,24 @@ const DEFAULT_APP_CONFIG = {
         zoom: 4,
         tileRadius: 1,
         frontsImage: "https://www.wpc.ncep.noaa.gov/basicwx/98fndfd.gif"
+    },
+    schumann: {
+        highSRIThreshold: 40,
+        minCacheMs: 300000,
+        sources: [
+            {
+                name: "Tomsk",
+                type: "image",
+                url: "https://sosrff.tsu.ru/new/shm.jpg",
+                refreshInterval: 300000
+            },
+            {
+                name: "Tomsk Alt",
+                type: "image",
+                url: "https://sosrff.tsu.ru/new/shm2.jpg",
+                refreshInterval: 300000
+            }
+        ]
     },
     visuals: {
         backgroundImages: [
@@ -635,6 +909,7 @@ const SOLAR_HISTORY_POINTS = Math.ceil((TREND_WINDOW_HOURS * 3600000) / SOLAR_IN
 const SCHUMANN_HISTORY_POINTS = Math.ceil((TREND_WINDOW_HOURS * 3600000) / SCHUMANN_INTERVAL_MS);
 const widgetHealth = {};
 const adaptivePollState = {};
+const STALE_THRESHOLD_MS = 10 * 60 * 1000;
 const LUNAR_DISTANCE_KM = 384400;
 const NEO_NEAR_MISS_LD = 0.75;
 const NEO_CLOSE_LD = 3.0;
@@ -680,6 +955,24 @@ const radarRenderState = {
     frontsImageUrl: "",
     frameKey: Date.now()
 };
+const schumannCorrelationState = {
+    sriValue: null,
+    sriObservedAt: "",
+    sriObservedAtMs: null,
+    lastHighEventValue: null,
+    lastHighEventAtMs: null
+};
+const schumannSpectrogramState = {
+    activeSourceName: "",
+    activeSourceUrl: "",
+    lastImageSrc: "",
+    lastObservedAt: "",
+    lastObservedAtMs: null,
+    lastSuccessAtMs: 0,
+    lastAttemptAtMs: 0,
+    lastError: "",
+    sourceFailures: []
+};
 
 try {
     alertsCriticalOnly = localStorage.getItem(ALERTS_MODE_KEY) === "1";
@@ -705,6 +998,26 @@ const HEARTBEAT_ORDER = [
     { id: "volcano", label: "VOL" }
 ];
 
+const PANEL_SELECTOR_BY_WIDGET = {
+    system: ".panel-system",
+    solar: ".panel-solar",
+    schumann: ".panel-schumann",
+    quakes: ".panel-quakes",
+    tsunami: ".panel-quakes",
+    alerts: ".panel-alerts",
+    weather: ".panel-weather",
+    neos: ".panel-neos",
+    radar: ".panel-radar",
+    volcano: ".panel-volcano"
+};
+
+const startupCheckState = {
+    api: "pending",
+    config: "pending",
+    schumannSources: 0,
+    checkedAt: ""
+};
+
 function nowLabel() {
     return new Date().toLocaleTimeString();
 }
@@ -720,13 +1033,30 @@ function formatAge(ms) {
 }
 
 function markHealth(id, state, detail = "") {
+    const previous = widgetHealth[id] || {};
+    const nowMs = Date.now();
+    const nowText = nowLabel();
     widgetHealth[id] = {
         state,
         detail,
-        updatedAt: nowLabel(),
-        updatedAtMs: Date.now()
+        updatedAt: nowText,
+        updatedAtMs: nowMs,
+        lastOkAt: state === "ok" ? nowText : (previous.lastOkAt || ""),
+        lastOkAtMs: state === "ok" ? nowMs : (previous.lastOkAtMs || 0)
     };
     renderHeartbeat();
+}
+
+function applyWidgetStaleState(id) {
+    const selector = PANEL_SELECTOR_BY_WIDGET[id];
+    if (!selector) return;
+    const panel = document.querySelector(selector);
+    if (!panel) return;
+
+    const h = widgetHealth[id];
+    const refMs = h?.lastOkAtMs || h?.updatedAtMs || 0;
+    const isStale = !!h && refMs > 0 && (Date.now() - refMs) > STALE_THRESHOLD_MS;
+    panel.classList.toggle("is-stale", isStale);
 }
 
 function renderHeartbeat() {
@@ -736,6 +1066,7 @@ function renderHeartbeat() {
         const state = widgetHealth[f.id]?.state || "unknown";
         el.className = `hb-dot ${state}`;
         el.title = `${f.label}: ${state}`;
+        applyWidgetStaleState(f.id);
     });
 }
 
@@ -746,6 +1077,7 @@ function healthLine(id) {
     const age = formatAge(Date.now() - (h.updatedAtMs || Date.now()));
     const primary = `Health: ${label} | Age: ${age}`;
     const detailParts = [`Updated: ${h.updatedAt}`];
+    if (h.lastOkAt) detailParts.push(`Last OK: ${h.lastOkAt}`);
     if (h.detail) detailParts.push(String(h.detail).trim());
     const detailText = detailParts.join(" | ");
     const compactDetail = detailText.length > 54 ? `${detailText.slice(0, 51)}...` : detailText;
@@ -1045,13 +1377,242 @@ function cacheBustUrl(raw, token) {
     }
 }
 
+function normalizeSchumannSource(rawSource, fallbackInterval) {
+    if (!rawSource || typeof rawSource !== "object") return null;
+
+    const url = typeof rawSource.url === "string" ? rawSource.url.trim() : "";
+    if (!url) return null;
+
+    const type = String(rawSource.type || "image").trim().toLowerCase();
+    if (type !== "image") return null;
+
+    return {
+        name: typeof rawSource.name === "string" && rawSource.name.trim() ? rawSource.name.trim() : "Unnamed source",
+        type,
+        url,
+        refreshInterval: Math.max(300000, toNumber(rawSource.refreshInterval, fallbackInterval) || fallbackInterval)
+    };
+}
+
+function getSchumannSpectrogramSources() {
+    const fallbackInterval = Math.max(300000, toNumber(APP_CONFIG?.schumann?.minCacheMs, 300000) || 300000);
+    const rawSources = Array.isArray(APP_CONFIG?.schumann?.sources) ? APP_CONFIG.schumann.sources : [];
+    const normalized = rawSources
+        .map((item) => normalizeSchumannSource(item, fallbackInterval))
+        .filter(Boolean);
+
+    return normalized.length > 0
+        ? normalized
+        : DEFAULT_APP_CONFIG.schumann.sources
+            .map((item) => normalizeSchumannSource(item, fallbackInterval))
+            .filter(Boolean);
+}
+
+function formatDeltaMinutes(deltaMs) {
+    if (!Number.isFinite(deltaMs)) return "n/a";
+    const mins = Math.round(deltaMs / 60000);
+    return `${mins}m`;
+}
+
+function renderSchumannSpectrogramStatus(message = "", level = "ok") {
+    const statusEl = document.getElementById("schumannSpectrogramStatus");
+    if (!statusEl) return;
+
+    const sriLabel = schumannCorrelationState.sriObservedAt
+        ? formatEventTime(schumannCorrelationState.sriObservedAt).replace("Time: ", "")
+        : "Unavailable";
+    const spectrogramLabel = schumannSpectrogramState.lastObservedAt
+        ? formatEventTime(schumannSpectrogramState.lastObservedAt).replace("Time: ", "")
+        : "Unavailable";
+    const threshold = toNumber(APP_CONFIG?.schumann?.highSRIThreshold, DEFAULT_APP_CONFIG.schumann.highSRIThreshold) || 40;
+    const highEvent = Number.isFinite(schumannCorrelationState.sriValue) && schumannCorrelationState.sriValue > threshold;
+
+    let deltaText = "Delta: n/a";
+    let deltaClass = "";
+    if (Number.isFinite(schumannCorrelationState.sriObservedAtMs) && Number.isFinite(schumannSpectrogramState.lastObservedAtMs)) {
+        const deltaMs = Math.abs(schumannCorrelationState.sriObservedAtMs - schumannSpectrogramState.lastObservedAtMs);
+        deltaText = `Delta: ${formatDeltaMinutes(deltaMs)}`;
+        if (deltaMs > 600000) {
+            deltaClass = "schumann-delta-alert";
+            deltaText += " (mismatch >10m)";
+        }
+    }
+
+    const statusColor = level === "offline" ? "#ff8a8a" : (level === "degraded" ? "#ffd166" : "#7be495");
+    const sourceLabel = schumannSpectrogramState.activeSourceName || "None";
+    const detail = message || "Ready";
+    const highMarker = highEvent ? ` | High SRI: ${schumannCorrelationState.sriValue.toFixed(2)}` : "";
+
+    statusEl.innerHTML = `
+        <div class="item schumann-status-row ${deltaClass}">Driver (SRI): ${escapeHtml(sriLabel)} | Effect (spectrogram): ${escapeHtml(spectrogramLabel)} | ${escapeHtml(deltaText)} | Source: ${escapeHtml(sourceLabel)} | Status: <span style="color:${statusColor}">${escapeHtml(detail)}</span>${escapeHtml(highMarker)}</div>
+    `;
+}
+
+async function runStartupChecks() {
+    startupCheckState.config = APP_CONFIG && typeof APP_CONFIG === "object" ? "ok" : "offline";
+    startupCheckState.schumannSources = getSchumannSpectrogramSources().length;
+    startupCheckState.api = "offline";
+
+    try {
+        await fetchJson(apiUrl("/system"), { timeoutMs: 2500, retries: 0 });
+        startupCheckState.api = "ok";
+    } catch (_) {
+        startupCheckState.api = "offline";
+    }
+
+    startupCheckState.checkedAt = nowLabel();
+}
+
+function startupCheckSummaryLine() {
+    const apiLabel = startupCheckState.api === "ok" ? "API ok" : "API offline";
+    const cfgLabel = startupCheckState.config === "ok" ? "Config ok" : "Config fallback";
+    const feedLabel = `SCH sources: ${startupCheckState.schumannSources}`;
+    const checked = startupCheckState.checkedAt ? ` | Self-check: ${startupCheckState.checkedAt}` : "";
+    return `${apiLabel} | ${cfgLabel} | ${feedLabel}${checked}`;
+}
+
+async function fetchSpectrogramImage(url, timeoutMs = 12000) {
+    const candidate = cacheBustUrl(url, Date.now());
+    if (!candidate) {
+        throw new Error("Invalid spectrogram URL");
+    }
+
+    return await new Promise((resolve, reject) => {
+        const probe = new Image();
+        let settled = false;
+        const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            reject(new Error("Image load timeout"));
+        }, timeoutMs);
+
+        probe.onload = () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve({ src: candidate, observedAtMs: Date.now() });
+        };
+
+        probe.onerror = () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            reject(new Error("Image load failed"));
+        };
+
+        probe.src = candidate;
+    });
+}
+
+function analyzeSpectrogram(imageData) {
+    // Future: extract intensity near the 7.83 Hz band.
+    return null;
+}
+
+function setSchumannSpectrogramError(message = "", level = "degraded") {
+    const errorEl = document.getElementById("schumannSpectrogramError");
+    if (!errorEl) return;
+
+    if (!message) {
+        errorEl.textContent = "";
+        errorEl.className = "schumann-spectrogram-error hidden";
+        return;
+    }
+
+    errorEl.textContent = `Spectrogram: ${message}`;
+    errorEl.className = `schumann-spectrogram-error ${level === "offline" ? "offline" : "degraded"}`;
+}
+
+async function loadSchumannSpectrogram(forceRefresh = false) {
+    const imgEl = document.getElementById("schumannSpectrogramImage");
+    if (!imgEl) return;
+
+    imgEl.onerror = () => {
+        setSchumannSpectrogramError("Image element failed to render the current frame.", "offline");
+    };
+
+    const sources = getSchumannSpectrogramSources();
+    if (sources.length === 0) {
+        markHealth("schumann", "degraded", "ELF source not configured");
+        renderSchumannSpectrogramStatus("No spectrogram source configured", "offline");
+        setSchumannSpectrogramError("No source configured in config.local.json", "offline");
+        return;
+    }
+
+    const now = Date.now();
+    const minCacheMs = Math.max(300000, toNumber(APP_CONFIG?.schumann?.minCacheMs, 300000) || 300000);
+    const active = sources.find((src) => src.name === schumannSpectrogramState.activeSourceName) || sources[0];
+    const activeInterval = Math.max(minCacheMs, active?.refreshInterval || minCacheMs);
+    const cacheFresh = schumannSpectrogramState.lastImageSrc && (now - schumannSpectrogramState.lastSuccessAtMs) < activeInterval;
+
+    if (!forceRefresh && cacheFresh) {
+        if (!imgEl.src && schumannSpectrogramState.lastImageSrc) {
+            imgEl.src = schumannSpectrogramState.lastImageSrc;
+        }
+        markHealth("schumann", "ok", `ELF cached (${active.name})`);
+        renderSchumannSpectrogramStatus("Using cached frame", "ok");
+        if (!schumannSpectrogramState.lastError) {
+            setSchumannSpectrogramError("");
+        }
+        return;
+    }
+
+    const orderedSources = schumannSpectrogramState.activeSourceName
+        ? [...sources.filter((src) => src.name === schumannSpectrogramState.activeSourceName), ...sources.filter((src) => src.name !== schumannSpectrogramState.activeSourceName)]
+        : sources;
+
+    schumannSpectrogramState.lastAttemptAtMs = now;
+    const failures = [];
+    for (const source of orderedSources) {
+        try {
+            const loaded = await fetchSpectrogramImage(source.url);
+            schumannSpectrogramState.activeSourceName = source.name;
+            schumannSpectrogramState.activeSourceUrl = source.url;
+            schumannSpectrogramState.lastImageSrc = loaded.src;
+            schumannSpectrogramState.lastObservedAtMs = loaded.observedAtMs;
+            schumannSpectrogramState.lastObservedAt = new Date(loaded.observedAtMs).toISOString();
+            schumannSpectrogramState.lastSuccessAtMs = loaded.observedAtMs;
+            schumannSpectrogramState.lastError = "";
+            schumannSpectrogramState.sourceFailures = failures;
+            imgEl.src = loaded.src;
+            markHealth("schumann", "ok", `ELF live (${source.name})`);
+            renderSchumannSpectrogramStatus("Live frame loaded", "ok");
+            setSchumannSpectrogramError("");
+
+            // Hook for future intensity extraction work.
+            setTimeout(() => analyzeSpectrogram(null), 0);
+            return;
+        } catch (err) {
+            failures.push(`${source.name}: ${err?.message || "fetch failed"}`);
+        }
+    }
+
+    schumannSpectrogramState.sourceFailures = failures;
+    schumannSpectrogramState.lastError = failures.join(" | ");
+
+    if (schumannSpectrogramState.lastImageSrc) {
+        if (!imgEl.src) {
+            imgEl.src = schumannSpectrogramState.lastImageSrc;
+        }
+        markHealth("schumann", "degraded", "ELF source stale");
+        renderSchumannSpectrogramStatus("Source outage, using last known frame", "degraded");
+        setSchumannSpectrogramError(`Using cached frame. ${schumannSpectrogramState.lastError || "Source temporarily unavailable."}`, "degraded");
+        return;
+    }
+
+    markHealth("schumann", "offline", "ELF source unreachable");
+    renderSchumannSpectrogramStatus("Source outage with no cached frame", "offline");
+    setSchumannSpectrogramError(schumannSpectrogramState.lastError || "All configured sources failed.", "offline");
+}
+
 function assetUrl(path) {
-    return `${ASSETS_BASE}${path}`;
+    return ASSETS_BASE ? `${ASSETS_BASE}${path}` : path;
 }
 
 async function loadRuntimeConfig() {
     try {
-        const cfg = await fetchJson(`${ASSETS_BASE}/config.local.json`, { timeoutMs: 3500, retries: 0 });
+        const localConfigUrl = ASSETS_BASE ? `${ASSETS_BASE}/config.local.json` : "./config.local.json";
+        const cfg = await fetchJson(localConfigUrl, { timeoutMs: 3500, retries: 0 });
         if (cfg && typeof cfg === "object") {
             APP_CONFIG = {
                 location: {
@@ -1067,6 +1628,13 @@ async function loadRuntimeConfig() {
                     frontsImage: typeof cfg?.radar?.frontsImage === "string" && cfg.radar.frontsImage.trim()
                         ? cfg.radar.frontsImage.trim()
                         : DEFAULT_APP_CONFIG.radar.frontsImage
+                },
+                schumann: {
+                    highSRIThreshold: toNumber(cfg?.schumann?.highSRIThreshold, DEFAULT_APP_CONFIG.schumann.highSRIThreshold),
+                    minCacheMs: toNumber(cfg?.schumann?.minCacheMs, DEFAULT_APP_CONFIG.schumann.minCacheMs),
+                    sources: Array.isArray(cfg?.schumann?.sources) && cfg.schumann.sources.length > 0
+                        ? cfg.schumann.sources
+                        : DEFAULT_APP_CONFIG.schumann.sources
                 },
                 visuals: {
                     backgroundImages: Array.isArray(cfg?.visuals?.backgroundImages) && cfg.visuals.backgroundImages.length > 0
@@ -1740,6 +2308,7 @@ async function loadSystem() {
             <div class="item">RAM: ${data.memory}%</div>
             <div class="item">Disk: ${data.disk}%</div>
             <div class="item">Uptime: ${escapeHtml(data.uptime)}</div>
+            <div class="item" style="font-size:9px;opacity:0.72;">${escapeHtml(startupCheckSummaryLine())}</div>
             <div class="item" style="font-size:10px;opacity:0.6;">Updated: ${nowLabel()}</div>
         `);
     } catch {
@@ -1890,6 +2459,15 @@ async function loadSchumann() {
         pushHistoryPoint(schumannHistory, responseValue, SCHUMANN_HISTORY_POINTS, observedAt);
         saveTrendHistory();
 
+        schumannCorrelationState.sriValue = responseValue;
+        schumannCorrelationState.sriObservedAt = String(observedAt);
+        schumannCorrelationState.sriObservedAtMs = parseTimeMs(observedAt);
+        const highThreshold = toNumber(APP_CONFIG?.schumann?.highSRIThreshold, DEFAULT_APP_CONFIG.schumann.highSRIThreshold) || 40;
+        if (responseValue > highThreshold) {
+            schumannCorrelationState.lastHighEventValue = responseValue;
+            schumannCorrelationState.lastHighEventAtMs = Date.now();
+        }
+
         let color = "#00ffcc";
         if (responseValue > 30) color = "#ff3333";
         else if (responseValue > 20) color = "#ffaa00";
@@ -1912,8 +2490,8 @@ async function loadSchumann() {
         el.innerHTML = `
             <div class="item">Response: <span style="color:${color}">${responseValue.toFixed(2)} ${escapeHtml(unit)}</span></div>
             <div class="item" style="font-size:10px;opacity:0.8;">24h Max: ${schMax24h.toFixed(2)} | Avg: ${schAvg24h.toFixed(2)} | Trend: <span style="color:${schTrend.color}">${schTrend.label}</span></div>
-            <div class="item" style="font-size:10px;opacity:0.7;">Source: ${escapeHtml(source)} | Updated: ${escapeHtml(formatEventTime(observedAt).replace("Time: ", ""))}</div>
-            ${componentValues ? `<div class="item" style="font-size:10px;opacity:0.7;">Components: ${escapeHtml(componentValues)}</div>` : ""}
+            <div class="item" style="font-size:10px;opacity:0.7;">${escapeHtml(source)} | ${escapeHtml(formatEventTime(observedAt).replace("Time: ", ""))}</div>
+            ${componentValues ? `<div class="item" style="font-size:10px;opacity:0.68;">${escapeHtml(componentValues)}</div>` : ""}
         `;
 
         drawChart("schumannChart", schumannHistory, 60, {
@@ -1932,12 +2510,16 @@ async function loadSchumann() {
             ]
         });
         renderGraphHealth("schumann", "schumannHealth");
+        renderSchumannSpectrogramStatus("SRI updated", "ok");
 
     } catch (err) {
-        markHealth("schumann", "offline", "No Schumann source configured");
+        console.error("Schumann /schumann-response API error:", err);
+        const errMsg = err?.message || "Unknown API error";
+        markHealth("schumann", "offline", `API error: ${errMsg}`);
         updateWidgetAlert("schumann", false);
-        el.innerHTML = `Offline<div class="item" style="font-size:10px;opacity:0.7;">${escapeHtml(err?.message || "Unknown source error")}</div>`;
+        el.innerHTML = `Offline<div class="item" style="font-size:10px;opacity:0.7;">${escapeHtml(errMsg)}</div>`;
         renderGraphHealth("schumann", "schumannHealth");
+        renderSchumannSpectrogramStatus("SRI feed offline", "degraded");
     }
 }
 
@@ -2324,7 +2906,7 @@ function drawChart(id, data, maxVal, options = {}) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    if (!data || data.length < 2) return;
+    if (!data || data.length < 1) return;
 
     const windowHours = Number.isFinite(options.windowHours) ? options.windowHours : TREND_WINDOW_HOURS;
     const windowMs = Math.max(3600000, windowHours * 3600000);
@@ -2336,7 +2918,7 @@ function drawChart(id, data, maxVal, options = {}) {
         return { ts: parseTimeMs(entry?.ts) || Date.now(), value: toNumber(entry?.value, null) };
     }).filter((p) => p.value !== null);
 
-    if (points.length < 2) return;
+    if (points.length < 1) return;
 
     points.sort((a, b) => a.ts - b.ts);
 
@@ -2380,7 +2962,7 @@ function drawChart(id, data, maxVal, options = {}) {
     ctx.lineTo(padL + plotW, padT + plotH);
     ctx.stroke();
 
-    const yTicks = 4;
+    const yTicks = 2;
     for (let i = 0; i <= yTicks; i++) {
         const ratio = i / yTicks;
         const y = padT + plotH - (ratio * plotH);
@@ -2474,6 +3056,7 @@ const ADAPTIVE_POLLS = {
     tsunami: { base: 120000, retry: 30000, max: 300000 },
     solar: { base: SOLAR_INTERVAL_MS, retry: 15000, max: 240000 },
     schumann: { base: SCHUMANN_INTERVAL_MS, retry: 15000, max: 240000 },
+    schumann_elf: { base: 300000, retry: 60000, max: 900000 },
     volcano: { base: 300000, retry: 60000, max: 900000 },
     alerts: { base: 300000, retry: 60000, max: 900000 },
     neos: { base: 3600000, retry: 180000, max: 3600000 },
@@ -2483,6 +3066,7 @@ const ADAPTIVE_POLLS = {
 
 async function initializeDashboard() {
     await loadRuntimeConfig();
+    await runStartupChecks();
     await restoreTrendHistory();
     startBackgroundRotation();
     initRadarInteractions();
@@ -2495,6 +3079,7 @@ async function initializeDashboard() {
     startAdaptivePoll("tsunami", loadTsunami, ADAPTIVE_POLLS.tsunami);
     startAdaptivePoll("solar", loadSolar, ADAPTIVE_POLLS.solar);
     startAdaptivePoll("schumann", loadSchumann, ADAPTIVE_POLLS.schumann);
+    startAdaptivePoll("schumann_elf", () => loadSchumannSpectrogram(false), ADAPTIVE_POLLS.schumann_elf);
     startAdaptivePoll("volcano", loadVolcano, ADAPTIVE_POLLS.volcano);
     startAdaptivePoll("alerts", loadAlerts, ADAPTIVE_POLLS.alerts);
     startAdaptivePoll("neos", loadNEOs, ADAPTIVE_POLLS.neos);
@@ -2512,6 +3097,7 @@ function manualRefresh() {
     loadTsunami();
     loadSolar();
     loadSchumann();
+    loadSchumannSpectrogram(false);
     loadVolcano();
     loadSystem();
     loadAlerts();

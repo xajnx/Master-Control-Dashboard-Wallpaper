@@ -16,10 +16,10 @@ app = Flask(__name__)
 def parse_allowed_origins():
     configured = os.environ.get(
         "CORS_ALLOWED_ORIGINS",
-        "http://localhost:8080,http://127.0.0.1:8080,http://localhost:5500,http://127.0.0.1:5500"
+        "null,http://localhost:8080,http://127.0.0.1:8080,http://localhost:5500,http://127.0.0.1:5500"
     )
     origins = [o.strip() for o in configured.split(",") if o.strip()]
-    return origins
+    return origins or ["null"]
 
 
 CORS(app, resources={
@@ -418,7 +418,14 @@ def neos():
             stale_payload["error"] = str(err)
             return jsonify(stale_payload), 200
 
-        return jsonify({"error": str(err), "asteroids": []}), 502
+        return jsonify({
+            "date": target_date,
+            "asteroids": [],
+            "count": 0,
+            "source": "live-unavailable",
+            "stale": False,
+            "error": str(err)
+        }), 200
 
     near_earth = data.get("near_earth_objects", {})
     daily = near_earth.get(target_date, []) if isinstance(near_earth, dict) else []

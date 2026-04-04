@@ -11,6 +11,24 @@
     "tileRadius": 1,
     "frontsImage": "https://www.wpc.ncep.noaa.gov/basicwx/98fndfd.gif"
   },
+  "schumann": {
+    "highSRIThreshold": 40,
+    "minCacheMs": 300000,
+    "sources": [
+      {
+        "name": "Tomsk",
+        "type": "image",
+        "url": "https://sosrff.tsu.ru/new/shm.jpg",
+        "refreshInterval": 300000
+      },
+      {
+        "name": "Tomsk Alt",
+        "type": "image",
+        "url": "https://sosrff.tsu.ru/new/shm2.jpg",
+        "refreshInterval": 300000
+      }
+    ]
+  },
   "visuals": {
     "backgroundImages": [
       "/assets/angel1.jpg",
