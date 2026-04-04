@@ -183,7 +183,9 @@ canvas {
 
 .radar-wrap {
     width: 100%;
-    height: calc(100% - 16px);
+    height: auto;
+    flex: 1;
+    min-height: 0;
     margin-top: 8px;
     display: flex;
     flex-direction: column;
@@ -193,10 +195,14 @@ canvas {
 .radar-stack {
     position: relative;
     width: 100%;
-    height: 100%;
+    height: auto;
+    flex: 1;
+    min-height: 170px;
     overflow: hidden;
     touch-action: none;
     cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .radar-stack.dragging {
@@ -207,6 +213,16 @@ canvas {
     position: absolute;
     inset: 0;
     transform-origin: 50% 50%;
+}
+
+.radar-stack img,
+.radar-stack .radar-base-tile,
+.radar-stack .radar-overlay-tile,
+.radar-stack .radar-cloud-tile,
+.radar-stack .radar-cloud-fallback,
+.radar-stack .radar-fronts-image {
+    pointer-events: none;
+    -webkit-user-drag: none;
 }
 
 .radar-base-map {
@@ -295,6 +311,12 @@ canvas {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+.radar-pan-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
 }
 
 .radar-btn {
@@ -516,7 +538,14 @@ canvas {
         <div class="radar-controls">
             <button id="radarZoomOut" class="radar-btn" type="button" title="Zoom out">-</button>
             <button id="radarZoomIn" class="radar-btn" type="button" title="Zoom in">+</button>
-            <button id="radarResetView" class="radar-btn" type="button" title="Reset view">Reset</button>
+            <div class="radar-pan-controls">
+                <button id="radarPanLeft" class="radar-btn" type="button" title="Pan left">◀</button>
+                <button id="radarPanUp" class="radar-btn" type="button" title="Pan up">▲</button>
+                <button id="radarPanDown" class="radar-btn" type="button" title="Pan down">▼</button>
+                <button id="radarPanRight" class="radar-btn" type="button" title="Pan right">▶</button>
+            </div>
+            <button id="radarCenterView" class="radar-btn" type="button" title="Center map">Center</button>
+            <button id="radarResetView" class="radar-btn" type="button" title="Reset zoom and center">Reset</button>
             <span id="radarZoomLabel" class="radar-zoom-label">100%</span>
         </div>
         <div class="radar-meta" style="opacity:0.8;">Drag to pan | Wheel to zoom</div>
@@ -1173,10 +1202,27 @@ function resetRadarView() {
     applyRadarViewTransform();
 }
 
+function centerRadarView() {
+    radarViewState.offsetX = 0;
+    radarViewState.offsetY = 0;
+    applyRadarViewTransform();
+}
+
+function panRadarBy(deltaX, deltaY) {
+    radarViewState.offsetX += deltaX;
+    radarViewState.offsetY += deltaY;
+    applyRadarViewTransform();
+}
+
 function initRadarInteractions() {
     const stack = document.getElementById("radarStack");
     const zoomIn = document.getElementById("radarZoomIn");
     const zoomOut = document.getElementById("radarZoomOut");
+    const panLeft = document.getElementById("radarPanLeft");
+    const panUp = document.getElementById("radarPanUp");
+    const panDown = document.getElementById("radarPanDown");
+    const panRight = document.getElementById("radarPanRight");
+    const centerBtn = document.getElementById("radarCenterView");
     const resetBtn = document.getElementById("radarResetView");
     if (!stack) return;
 
@@ -1187,6 +1233,7 @@ function initRadarInteractions() {
     }, { passive: false });
 
     stack.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
         radarViewState.pointerId = event.pointerId;
         radarViewState.dragStartX = event.clientX;
         radarViewState.dragStartY = event.clientY;
@@ -1198,6 +1245,7 @@ function initRadarInteractions() {
 
     stack.addEventListener("pointermove", (event) => {
         if (radarViewState.pointerId !== event.pointerId) return;
+        event.preventDefault();
         radarViewState.offsetX = radarViewState.startOffsetX + (event.clientX - radarViewState.dragStartX);
         radarViewState.offsetY = radarViewState.startOffsetY + (event.clientY - radarViewState.dragStartY);
         applyRadarViewTransform();
@@ -1217,11 +1265,87 @@ function initRadarInteractions() {
     stack.addEventListener("pointerup", endDrag);
     stack.addEventListener("pointercancel", endDrag);
 
+    // Some wallpaper/webview engines ignore pointer capture; keep mouse/touch fallback paths.
+    let mouseDragging = false;
+    stack.addEventListener("mousedown", (event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        mouseDragging = true;
+        radarViewState.dragStartX = event.clientX;
+        radarViewState.dragStartY = event.clientY;
+        radarViewState.startOffsetX = radarViewState.offsetX;
+        radarViewState.startOffsetY = radarViewState.offsetY;
+        stack.classList.add("dragging");
+    });
+
+    window.addEventListener("mousemove", (event) => {
+        if (!mouseDragging) return;
+        radarViewState.offsetX = radarViewState.startOffsetX + (event.clientX - radarViewState.dragStartX);
+        radarViewState.offsetY = radarViewState.startOffsetY + (event.clientY - radarViewState.dragStartY);
+        applyRadarViewTransform();
+    });
+
+    window.addEventListener("mouseup", () => {
+        if (!mouseDragging) return;
+        mouseDragging = false;
+        stack.classList.remove("dragging");
+    });
+
+    stack.addEventListener("dragstart", (event) => {
+        event.preventDefault();
+    });
+
+    let touchDragging = false;
+    stack.addEventListener("touchstart", (event) => {
+        if (!event.touches || event.touches.length !== 1) return;
+        const touch = event.touches[0];
+        touchDragging = true;
+        radarViewState.dragStartX = touch.clientX;
+        radarViewState.dragStartY = touch.clientY;
+        radarViewState.startOffsetX = radarViewState.offsetX;
+        radarViewState.startOffsetY = radarViewState.offsetY;
+        stack.classList.add("dragging");
+    }, { passive: true });
+
+    stack.addEventListener("touchmove", (event) => {
+        if (!touchDragging || !event.touches || event.touches.length !== 1) return;
+        const touch = event.touches[0];
+        radarViewState.offsetX = radarViewState.startOffsetX + (touch.clientX - radarViewState.dragStartX);
+        radarViewState.offsetY = radarViewState.startOffsetY + (touch.clientY - radarViewState.dragStartY);
+        applyRadarViewTransform();
+    }, { passive: true });
+
+    const endTouchDrag = () => {
+        if (!touchDragging) return;
+        touchDragging = false;
+        stack.classList.remove("dragging");
+    };
+
+    stack.addEventListener("touchend", endTouchDrag, { passive: true });
+    stack.addEventListener("touchcancel", endTouchDrag, { passive: true });
+
     if (zoomIn) {
         zoomIn.addEventListener("click", () => setRadarScale(radarViewState.scale * 1.2));
     }
     if (zoomOut) {
         zoomOut.addEventListener("click", () => setRadarScale(radarViewState.scale * 0.83));
+    }
+    // Button panning remains usable when embedded hosts suppress drag interactions.
+    const panStep = 42;
+    if (panLeft) {
+        panLeft.addEventListener("click", () => panRadarBy(panStep, 0));
+    }
+    if (panUp) {
+        panUp.addEventListener("click", () => panRadarBy(0, panStep));
+    }
+    if (panDown) {
+        panDown.addEventListener("click", () => panRadarBy(0, -panStep));
+    }
+    if (panRight) {
+        panRight.addEventListener("click", () => panRadarBy(-panStep, 0));
+    }
+    if (centerBtn) {
+        centerBtn.addEventListener("click", centerRadarView);
     }
     if (resetBtn) {
         resetBtn.addEventListener("click", resetRadarView);
@@ -1261,11 +1385,11 @@ function renderRadarTileLayers(host, radarPath, cloudPath, lat, lon, zoom, tileR
             const left = offsetLeft + ((dx + tileRadius) * 256);
             const top = offsetTop + ((dy + tileRadius) * 256);
 
-            baseTiles.push(`<img class="radar-base-tile" loading="lazy" decoding="async" style="left:${left}px;top:${top}px;" src="https://tile.openstreetmap.org/${zoom}/${wrappedX}/${tileY}.png" alt="">`);
-            overlayTiles.push(`<img class="radar-overlay-tile" loading="lazy" decoding="async" style="left:${left}px;top:${top}px;" src="${host}${radarPath}/256/${zoom}/${wrappedX}/${tileY}/2/1_1.png" alt="">`);
+            baseTiles.push(`<img class="radar-base-tile" loading="lazy" decoding="async" draggable="false" style="left:${left}px;top:${top}px;" src="https://tile.openstreetmap.org/${zoom}/${wrappedX}/${tileY}.png" alt="">`);
+            overlayTiles.push(`<img class="radar-overlay-tile" loading="lazy" decoding="async" draggable="false" style="left:${left}px;top:${top}px;" src="${host}${radarPath}/256/${zoom}/${wrappedX}/${tileY}/2/1_1.png" alt="">`);
 
             if (cloudPath) {
-                cloudTiles.push(`<img class="radar-cloud-tile" loading="lazy" decoding="async" style="left:${left}px;top:${top}px;" src="${host}${cloudPath}/256/${zoom}/${wrappedX}/${tileY}/0/0_0.png" alt="">`);
+                cloudTiles.push(`<img class="radar-cloud-tile" loading="lazy" decoding="async" draggable="false" style="left:${left}px;top:${top}px;" src="${host}${cloudPath}/256/${zoom}/${wrappedX}/${tileY}/0/0_0.png" alt="">`);
             }
         }
     }
@@ -1278,13 +1402,13 @@ function renderRadarTileLayers(host, radarPath, cloudPath, lat, lon, zoom, tileR
     } else {
         const fallbackCloud = cacheBustUrl("https://cdn.star.nesdis.noaa.gov/GOES16/ABI/SECTOR/us/GEOCOLOR/latest.jpg", frameKey);
         cloudContainer.innerHTML = fallbackCloud
-            ? `<img class="radar-cloud-fallback" loading="lazy" decoding="async" src="${fallbackCloud}" alt="Cloud layer">`
+            ? `<img class="radar-cloud-fallback" loading="lazy" decoding="async" draggable="false" src="${fallbackCloud}" alt="Cloud layer">`
             : "";
     }
 
     const frontImage = cacheBustUrl(frontsImageUrl, frameKey);
     frontsContainer.innerHTML = frontImage
-        ? `<img class="radar-fronts-image" loading="lazy" decoding="async" src="${frontImage}" alt="Current frontal analysis">`
+        ? `<img class="radar-fronts-image" loading="lazy" decoding="async" draggable="false" src="${frontImage}" alt="Current frontal analysis">`
         : "";
 
     applyRadarViewTransform();
