@@ -9,7 +9,8 @@ A local situational-awareness dashboard with a static frontend and a Flask API p
 - Solar activity: Kp index and solar wind plasma context
 - Schumann response widget with strict source separation
 - Volcano activity details from EONET
-- Weather, AQI, radar, and severe weather alerts
+- Weather, AQI, local forecast summary, and severe weather alerts
+- Interactive radar with pan/zoom, cloud layer, and surface fronts overlay
 - Persistent 24-hour trend history across restarts
 
 ## Requirements
@@ -25,16 +26,16 @@ A local situational-awareness dashboard with a static frontend and a Flask API p
 - `schumann_adapter.py`: Schumann payload normalizer
 - `.env.example`: backend environment template
 - `config.example.json`: frontend runtime config template
-- `config.local.json`: starter runtime config included in this sanitized export
 - `data/`: persisted trend history and optional local Schumann fallback
+- `scripts/export_sanitized.sh`: rebuilds the shareable sanitized copy
 
 ## Install (Linux)
 
-1. Clone the repo and enter the sanitized template folder.
+1. Clone the repo and enter it.
 
 ```bash
 git clone <YOUR_REPO_URL>
-cd Master-Control-Dashboard-Wallpaper/sanitized-template
+cd Master-Control-Dashboard-Wallpaper
 ```
 
 2. Ensure Python venv support is installed.
@@ -63,7 +64,11 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-6. Review `config.local.json` and update the location, radar, and visuals values for your site.
+6. Create local frontend config.
+
+```bash
+cp config.example.json config.local.json
+```
 
 ## Configuration
 
@@ -76,7 +81,9 @@ Available keys:
 - `CORS_ALLOWED_ORIGINS`: comma-separated frontend origins allowed to call the API
 - `NASA_API_KEY`: optional NASA API key. `DEMO_KEY` works with rate limits
 - `SCHUMANN_API_URL`: optional real-time Schumann JSON source
+- `SCHUMANN_API_URLS`: optional comma-separated Schumann JSON sources (priority order)
 - `SCHUMANN_VALUE_PATH`: optional dot-path to the numeric value inside a custom Schumann payload
+- `SCHUMANN_DERIVED_ENABLED`: when enabled (default), computes a live derived Schumann Response Index from NOAA feeds when direct Schumann source is missing
 
 ### Frontend config: `config.local.json`
 
@@ -85,6 +92,7 @@ Set these values for your local install:
 - `location.label`: display label for the weather widget
 - `location.lat` and `location.lon`: weather/AQI coordinates
 - `radar.lat`, `radar.lon`, `radar.zoom`, `radar.tileRadius`: radar viewport settings
+- `radar.frontsImage`: optional URL for frontal-analysis overlay image (default uses WPC)
 - `visuals.backgroundImages`: array of background image paths
 
 ## Run
@@ -129,9 +137,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/Master-Control-Dashboard-Wallpaper/sanitized-template
-EnvironmentFile=%h/Master-Control-Dashboard-Wallpaper/sanitized-template/.env
-ExecStart=%h/Master-Control-Dashboard-Wallpaper/sanitized-template/.venv/bin/python %h/Master-Control-Dashboard-Wallpaper/sanitized-template/system_api.py
+WorkingDirectory=%h/Master-Control-Dashboard-Wallpaper
+EnvironmentFile=%h/Master-Control-Dashboard-Wallpaper/.env
+ExecStart=%h/Master-Control-Dashboard-Wallpaper/.venv/bin/python %h/Master-Control-Dashboard-Wallpaper/system_api.py
 Restart=on-failure
 RestartSec=5
 
@@ -149,8 +157,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/Master-Control-Dashboard-Wallpaper/sanitized-template
-ExecStart=%h/Master-Control-Dashboard-Wallpaper/sanitized-template/.venv/bin/python -m http.server 8080
+WorkingDirectory=%h/Master-Control-Dashboard-Wallpaper
+ExecStart=%h/Master-Control-Dashboard-Wallpaper/.venv/bin/python -m http.server 8080
 Restart=on-failure
 RestartSec=5
 
@@ -158,7 +166,7 @@ RestartSec=5
 WantedBy=default.target
 ```
 
-If the repo directory name is different on another machine, replace `%h/Master-Control-Dashboard-Wallpaper/sanitized-template` in both service files with the actual absolute path.
+If the repo directory name is different on another machine, replace `%h/Master-Control-Dashboard-Wallpaper` in both service files with the actual absolute path.
 
 2. Enable and start both services.
 
@@ -198,12 +206,13 @@ X-GNOME-Autostart-enabled=true
 
 ## Schumann Response Setup
 
-The Schumann widget is intentionally strict and does not substitute solar wind data.
+The Schumann widget supports three source modes in priority order:
 
-Provide one of these:
+1. `SCHUMANN_API_URL` / `SCHUMANN_API_URLS` endpoints (first endpoint with a numeric value wins)
+2. Derived live index mode from NOAA Kp + solar-wind plasma + GOES X-ray (`SCHUMANN_DERIVED_ENABLED=1`)
+3. Local fallback file `data/schumann_response.json`
 
-- Set `SCHUMANN_API_URL` to a JSON endpoint containing a numeric response field
-- Create `data/schumann_response.json` as a local fallback source
+You can still create `data/schumann_response.json` as a hard fallback source.
 
 Example local fallback file:
 
@@ -222,7 +231,7 @@ The backend uses `schumann_adapter.py` to normalize flat payloads, nested object
 data.current.value
 ```
 
-If the remote source fails or returns an incompatible payload, the backend falls back to `data/schumann_response.json` when available.
+If remote and derived sources fail or return incompatible payloads, the backend falls back to `data/schumann_response.json` when available.
 
 ## Persistence
 
@@ -242,3 +251,21 @@ If the remote source fails or returns an incompatible payload, the backend falls
 - The API binds to `127.0.0.1` by default
 - CORS defaults to localhost-only origins
 - No elevated privileges or sudo access are required
+
+## Create Sanitized Shareable Copy
+
+To rebuild the shareable sanitized export without touching your working copy:
+
+```bash
+bash scripts/export_sanitized.sh
+```
+
+Output:
+
+```text
+sanitized-template/
+```
+
+## Publishing Note
+
+If you publish the sanitized copy, publish the contents of `sanitized-template/` rather than the live working files in the project root.

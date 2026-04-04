@@ -43,6 +43,9 @@ body {
     border-radius: 8px;
     padding: 8px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 .title {
@@ -87,16 +90,95 @@ body {
     font-size: 14px;
     line-height: 1.6;
     margin-top: 10px;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.widget-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.widget-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.widget-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.widget-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.widget-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.widget-health-slot {
+    flex: none;
+    min-height: 28px;
 }
 
 .item {
     margin-bottom: 4px;
 }
 
+.weather-layout {
+    display: flex;
+    gap: 10px;
+}
+
+.weather-main {
+    flex: 1 1 56%;
+    min-width: 0;
+}
+
+.weather-side {
+    flex: 1 1 44%;
+    min-width: 0;
+    border-left: 1px solid rgba(255,255,255,0.12);
+    padding-left: 10px;
+}
+
+.weather-side-title {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #b8cad8;
+    margin-bottom: 4px;
+}
+
+.weather-alert-bar {
+    font-size: 10px;
+    font-weight: bold;
+    border: 1px solid rgba(123,228,149,0.5);
+    border-radius: 4px;
+    color: #7be495;
+    background: rgba(123,228,149,0.09);
+    padding: 2px 6px;
+    margin: 4px 0 6px;
+}
+
+.weather-alert-bar.severe {
+    color: #ffe8e8;
+    border-color: rgba(255,80,80,0.8);
+    background: rgba(255,40,40,0.22);
+    animation: flash 1s infinite;
+}
+
 canvas {
     width: 100%;
-    height: 80px;
+    height: 96px;
     margin-top: 8px;
+    flex: none;
 }
 
 .radar-wrap {
@@ -113,6 +195,18 @@ canvas {
     width: 100%;
     height: 100%;
     overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+}
+
+.radar-stack.dragging {
+    cursor: grabbing;
+}
+
+.radar-layer-group {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 50%;
 }
 
 .radar-base-map {
@@ -125,8 +219,22 @@ canvas {
 .radar-overlay-map {
     position: absolute;
     inset: 0;
-    z-index: 2;
+    z-index: 3;
     background: transparent;
+}
+
+.radar-cloud-map {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.radar-fronts-map {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
 }
 
 .radar-base-tile {
@@ -143,6 +251,72 @@ canvas {
     image-rendering: auto;
     opacity: 0.95;
     filter: saturate(1.25) contrast(1.15);
+}
+
+.radar-cloud-tile {
+    position: absolute;
+    width: 256px;
+    height: 256px;
+    image-rendering: auto;
+    opacity: 0.35;
+    filter: grayscale(0.15) saturate(0.8) brightness(1.05);
+}
+
+.radar-cloud-fallback,
+.radar-fronts-image {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 112%;
+    height: 112%;
+    transform: translate(-50%, -50%);
+    object-fit: cover;
+}
+
+.radar-cloud-fallback {
+    opacity: 0.24;
+    filter: saturate(0.85) contrast(1.05);
+}
+
+.radar-fronts-image {
+    opacity: 0.62;
+    filter: saturate(1.2) contrast(1.12);
+    mix-blend-mode: screen;
+}
+
+.radar-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.radar-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.radar-btn {
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.45);
+    color: #d6e2ea;
+    font-size: 11px;
+    border-radius: 4px;
+    min-width: 24px;
+    height: 22px;
+    cursor: pointer;
+}
+
+.radar-btn:hover {
+    background: rgba(255,255,255,0.12);
+}
+
+.radar-zoom-label {
+    font-size: 10px;
+    min-width: 42px;
+    text-align: center;
+    opacity: 0.85;
 }
 
 .radar-meta {
@@ -336,11 +510,24 @@ canvas {
 
 <div class="panel">
 <div class="title"><span class="hb-dot unknown" id="led-radar" title="RAD"></span>🌪️ Radar</div>
-<div class="desc">Static regional radar snapshot.</div>
+<div class="desc">Interactive radar with cloud and frontal overlays.</div>
 <div class="radar-wrap">
-    <div class="radar-stack">
-        <div id="radarBaseMap" class="radar-base-map" aria-hidden="true"></div>
-        <div id="radarOverlayMap" class="radar-overlay-map" aria-hidden="true"></div>
+    <div class="radar-toolbar">
+        <div class="radar-controls">
+            <button id="radarZoomOut" class="radar-btn" type="button" title="Zoom out">-</button>
+            <button id="radarZoomIn" class="radar-btn" type="button" title="Zoom in">+</button>
+            <button id="radarResetView" class="radar-btn" type="button" title="Reset view">Reset</button>
+            <span id="radarZoomLabel" class="radar-zoom-label">100%</span>
+        </div>
+        <div class="radar-meta" style="opacity:0.8;">Drag to pan | Wheel to zoom</div>
+    </div>
+    <div id="radarStack" class="radar-stack">
+        <div id="radarLayerGroup" class="radar-layer-group">
+            <div id="radarBaseMap" class="radar-base-map" aria-hidden="true"></div>
+            <div id="radarCloudMap" class="radar-cloud-map" aria-hidden="true"></div>
+            <div id="radarOverlayMap" class="radar-overlay-map" aria-hidden="true"></div>
+            <div id="radarFrontsMap" class="radar-fronts-map" aria-hidden="true"></div>
+        </div>
     </div>
     <div id="radarMeta" class="radar-meta">Loading radar snapshot...</div>
 </div>
@@ -375,7 +562,8 @@ const DEFAULT_APP_CONFIG = {
         lat: 32.5,
         lon: -99.0,
         zoom: 4,
-        tileRadius: 1
+        tileRadius: 1,
+        frontsImage: "https://www.wpc.ncep.noaa.gov/basicwx/98fndfd.gif"
     },
     visuals: {
         backgroundImages: [
@@ -403,6 +591,24 @@ const ALERT_CERTAINTY_SCORE = { observed: 3, likely: 2, possible: 1, unlikely: 0
 const ALERTS_MODE_KEY = "alerts_critical_only";
 let alertsCriticalOnly = false;
 const alertTimers = {};
+const LOCAL_SEVERE_ALERT_TERMS = [
+    "severe thunderstorm warning",
+    "severe thunderstorm watch",
+    "tornado warning",
+    "tornado watch"
+];
+const radarViewState = {
+    scale: 1,
+    minScale: 1,
+    maxScale: 4,
+    offsetX: 0,
+    offsetY: 0,
+    pointerId: null,
+    dragStartX: 0,
+    dragStartY: 0,
+    startOffsetX: 0,
+    startOffsetY: 0
+};
 
 try {
     alertsCriticalOnly = localStorage.getItem(ALERTS_MODE_KEY) === "1";
@@ -476,7 +682,7 @@ function healthLine(id) {
 }
 
 function setWidgetHtml(el, id, bodyHtml) {
-    el.innerHTML = `${bodyHtml}${healthLine(id)}`;
+    el.innerHTML = `<div class="widget-scroll">${bodyHtml}</div><div class="widget-health-slot">${healthLine(id)}</div>`;
 }
 
 function updateWidgetAlert(id, shouldAlert, durationMs = 5000) {
@@ -566,6 +772,11 @@ function sortNwsAlerts(features) {
         const bTime = parseTimeMs(bp.sent || bp.effective || bp.onset || bp.expires);
         return bTime - aTime;
     });
+}
+
+function isSevereLocalAlert(feature) {
+    const event = normalizeAlertValue(feature?.properties?.event);
+    return LOCAL_SEVERE_ALERT_TERMS.some((term) => event.includes(term));
 }
 
 function isCriticalAlert(feature) {
@@ -751,6 +962,18 @@ function apiUrl(path) {
     return `${API_BASE}${path}`;
 }
 
+function cacheBustUrl(raw, token) {
+    try {
+        const url = new URL(String(raw || ""));
+        if (token) {
+            url.searchParams.set("t", String(token));
+        }
+        return url.href;
+    } catch (_) {
+        return "";
+    }
+}
+
 function assetUrl(path) {
     return `${ASSETS_BASE}${path}`;
 }
@@ -769,7 +992,10 @@ async function loadRuntimeConfig() {
                     lat: toNumber(cfg?.radar?.lat, DEFAULT_APP_CONFIG.radar.lat),
                     lon: toNumber(cfg?.radar?.lon, DEFAULT_APP_CONFIG.radar.lon),
                     zoom: toNumber(cfg?.radar?.zoom, DEFAULT_APP_CONFIG.radar.zoom),
-                    tileRadius: toNumber(cfg?.radar?.tileRadius, DEFAULT_APP_CONFIG.radar.tileRadius)
+                    tileRadius: toNumber(cfg?.radar?.tileRadius, DEFAULT_APP_CONFIG.radar.tileRadius),
+                    frontsImage: typeof cfg?.radar?.frontsImage === "string" && cfg.radar.frontsImage.trim()
+                        ? cfg.radar.frontsImage.trim()
+                        : DEFAULT_APP_CONFIG.radar.frontsImage
                 },
                 visuals: {
                     backgroundImages: Array.isArray(cfg?.visuals?.backgroundImages) && cfg.visuals.backgroundImages.length > 0
@@ -786,6 +1012,10 @@ async function loadRuntimeConfig() {
 function toNumber(value, fallback = null) {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
+}
+
+function clamp(value, minValue, maxValue) {
+    return Math.max(minValue, Math.min(maxValue, value));
 }
 
 function moonPhaseLabel(rawPhase) {
@@ -851,7 +1081,16 @@ function renderQuakesPanel() {
     if (tsunamiStatus) statusLines.push(`<div class="item" style="color:#ff6666;">${escapeHtml(tsunamiStatus)}</div>`);
     if (quakesStatus) statusLines.push(`<div class="item" style="color:#ffaa00;">${escapeHtml(quakesStatus)}</div>`);
 
-    const tsunamiHtml = tsunamiItems.map((a) => `
+    const tsunamiPrimary = tsunamiItems.slice(0, 2);
+    const quakePrimary = quakesItems.slice(0, 3);
+
+    const tsunamiHeader = tsunamiPrimary.length > 0 ? `<div class="item" style="font-size:10px;opacity:0.75;color:#ff8a8a;">Tsunami (Critical)</div>` : "";
+    const quakeHeader = quakePrimary.length > 0 ? `<div class="item" style="font-size:10px;opacity:0.75;color:#9fe7dd;">Earthquakes</div>` : "";
+    if (tsunamiItems.length > tsunamiPrimary.length) {
+        statusLines.push(`<div class="item" style="font-size:10px;opacity:0.7;color:#ff9999;">+${tsunamiItems.length - tsunamiPrimary.length} more tsunami alerts</div>`);
+    }
+
+    const tsunamiHtml = tsunamiPrimary.map((a) => `
         <div class="item">
             <a href="${safeHref(a.url)}" target="_blank" rel="noopener noreferrer" style="color:#ff3333;text-decoration:none;">
                 🌊 ${escapeHtml(a.label)}
@@ -860,7 +1099,7 @@ function renderQuakesPanel() {
         </div>
     `).join("");
 
-    const quakeHtml = quakesItems.map((q) => `
+    const quakeHtml = quakePrimary.map((q) => `
         <div class="item">
             <a href="${safeHref(q.url)}" target="_blank" rel="noopener noreferrer" style="color:#00ffcc;text-decoration:none;">
                 M${escapeHtml(q.mag)} - ${escapeHtml(q.place)}
@@ -874,7 +1113,7 @@ function renderQuakesPanel() {
         return;
     }
 
-    setWidgetHtml(el, "quakes", `${statusLines.join("")}${tsunamiHtml}${quakeHtml}`);
+    setWidgetHtml(el, "quakes", `${statusLines.join("")}${quakeHeader}${quakeHtml}${tsunamiHeader}${tsunamiHtml}`);
 }
 
 function radarTileXY(lat, lon, zoom) {
@@ -885,10 +1124,119 @@ function radarTileXY(lat, lon, zoom) {
     return { x, y };
 }
 
-function renderRadarTileLayers(host, path, lat, lon, zoom, tileRadius = 1) {
+function clampRadarOffsets() {
+    const stack = document.getElementById("radarStack");
+    if (!stack) return;
+    const overscrollX = Math.max(140, ((stack.clientWidth * radarViewState.scale) - stack.clientWidth) / 2);
+    const overscrollY = Math.max(140, ((stack.clientHeight * radarViewState.scale) - stack.clientHeight) / 2);
+    radarViewState.offsetX = clamp(radarViewState.offsetX, -overscrollX, overscrollX);
+    radarViewState.offsetY = clamp(radarViewState.offsetY, -overscrollY, overscrollY);
+}
+
+function updateRadarZoomLabel() {
+    const zoomLabel = document.getElementById("radarZoomLabel");
+    if (!zoomLabel) return;
+    zoomLabel.textContent = `${Math.round(radarViewState.scale * 100)}%`;
+}
+
+function applyRadarViewTransform() {
+    const group = document.getElementById("radarLayerGroup");
+    if (!group) return;
+    clampRadarOffsets();
+    group.style.transform = `translate(${radarViewState.offsetX}px, ${radarViewState.offsetY}px) scale(${radarViewState.scale})`;
+    updateRadarZoomLabel();
+}
+
+function setRadarScale(nextScale, anchorX = null, anchorY = null) {
+    const stack = document.getElementById("radarStack");
+    if (!stack) return;
+
+    const prev = radarViewState.scale;
+    const clampedScale = clamp(nextScale, radarViewState.minScale, radarViewState.maxScale);
+    if (clampedScale === prev) return;
+
+    const rect = stack.getBoundingClientRect();
+    const centerX = anchorX !== null ? anchorX - rect.left - rect.width / 2 : 0;
+    const centerY = anchorY !== null ? anchorY - rect.top - rect.height / 2 : 0;
+    const scaleRatio = clampedScale / prev;
+
+    radarViewState.offsetX = (radarViewState.offsetX - centerX) * scaleRatio + centerX;
+    radarViewState.offsetY = (radarViewState.offsetY - centerY) * scaleRatio + centerY;
+    radarViewState.scale = clampedScale;
+    applyRadarViewTransform();
+}
+
+function resetRadarView() {
+    radarViewState.scale = 1;
+    radarViewState.offsetX = 0;
+    radarViewState.offsetY = 0;
+    applyRadarViewTransform();
+}
+
+function initRadarInteractions() {
+    const stack = document.getElementById("radarStack");
+    const zoomIn = document.getElementById("radarZoomIn");
+    const zoomOut = document.getElementById("radarZoomOut");
+    const resetBtn = document.getElementById("radarResetView");
+    if (!stack) return;
+
+    stack.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        const direction = event.deltaY < 0 ? 1.14 : 0.88;
+        setRadarScale(radarViewState.scale * direction, event.clientX, event.clientY);
+    }, { passive: false });
+
+    stack.addEventListener("pointerdown", (event) => {
+        radarViewState.pointerId = event.pointerId;
+        radarViewState.dragStartX = event.clientX;
+        radarViewState.dragStartY = event.clientY;
+        radarViewState.startOffsetX = radarViewState.offsetX;
+        radarViewState.startOffsetY = radarViewState.offsetY;
+        stack.classList.add("dragging");
+        stack.setPointerCapture(event.pointerId);
+    });
+
+    stack.addEventListener("pointermove", (event) => {
+        if (radarViewState.pointerId !== event.pointerId) return;
+        radarViewState.offsetX = radarViewState.startOffsetX + (event.clientX - radarViewState.dragStartX);
+        radarViewState.offsetY = radarViewState.startOffsetY + (event.clientY - radarViewState.dragStartY);
+        applyRadarViewTransform();
+    });
+
+    const endDrag = (event) => {
+        if (radarViewState.pointerId !== event.pointerId) return;
+        radarViewState.pointerId = null;
+        stack.classList.remove("dragging");
+        try {
+            stack.releasePointerCapture(event.pointerId);
+        } catch (_) {
+            // release can fail if pointer was already lost
+        }
+    };
+
+    stack.addEventListener("pointerup", endDrag);
+    stack.addEventListener("pointercancel", endDrag);
+
+    if (zoomIn) {
+        zoomIn.addEventListener("click", () => setRadarScale(radarViewState.scale * 1.2));
+    }
+    if (zoomOut) {
+        zoomOut.addEventListener("click", () => setRadarScale(radarViewState.scale * 0.83));
+    }
+    if (resetBtn) {
+        resetBtn.addEventListener("click", resetRadarView);
+    }
+
+    window.addEventListener("resize", applyRadarViewTransform);
+    resetRadarView();
+}
+
+function renderRadarTileLayers(host, radarPath, cloudPath, lat, lon, zoom, tileRadius = 1, frontsImageUrl = "", frameKey = Date.now()) {
     const baseContainer = document.getElementById("radarBaseMap");
+    const cloudContainer = document.getElementById("radarCloudMap");
     const overlayContainer = document.getElementById("radarOverlayMap");
-    if (!baseContainer || !overlayContainer) return;
+    const frontsContainer = document.getElementById("radarFrontsMap");
+    if (!baseContainer || !cloudContainer || !overlayContainer || !frontsContainer) return;
 
     const center = radarTileXY(lat, lon, zoom);
     const n = 2 ** zoom;
@@ -900,6 +1248,7 @@ function renderRadarTileLayers(host, path, lat, lon, zoom, tileRadius = 1) {
     const offsetTop = Math.round((viewportH - mosaicSize) / 2);
 
     const baseTiles = [];
+    const cloudTiles = [];
     const overlayTiles = [];
 
     for (let dy = -tileRadius; dy <= tileRadius; dy++) {
@@ -913,12 +1262,32 @@ function renderRadarTileLayers(host, path, lat, lon, zoom, tileRadius = 1) {
             const top = offsetTop + ((dy + tileRadius) * 256);
 
             baseTiles.push(`<img class="radar-base-tile" loading="lazy" decoding="async" style="left:${left}px;top:${top}px;" src="https://tile.openstreetmap.org/${zoom}/${wrappedX}/${tileY}.png" alt="">`);
-            overlayTiles.push(`<img class="radar-overlay-tile" loading="lazy" decoding="async" style="left:${left}px;top:${top}px;" src="${host}${path}/256/${zoom}/${wrappedX}/${tileY}/2/1_1.png" alt="">`);
+            overlayTiles.push(`<img class="radar-overlay-tile" loading="lazy" decoding="async" style="left:${left}px;top:${top}px;" src="${host}${radarPath}/256/${zoom}/${wrappedX}/${tileY}/2/1_1.png" alt="">`);
+
+            if (cloudPath) {
+                cloudTiles.push(`<img class="radar-cloud-tile" loading="lazy" decoding="async" style="left:${left}px;top:${top}px;" src="${host}${cloudPath}/256/${zoom}/${wrappedX}/${tileY}/0/0_0.png" alt="">`);
+            }
         }
     }
 
     baseContainer.innerHTML = baseTiles.join("");
     overlayContainer.innerHTML = overlayTiles.join("");
+
+    if (cloudTiles.length > 0) {
+        cloudContainer.innerHTML = cloudTiles.join("");
+    } else {
+        const fallbackCloud = cacheBustUrl("https://cdn.star.nesdis.noaa.gov/GOES16/ABI/SECTOR/us/GEOCOLOR/latest.jpg", frameKey);
+        cloudContainer.innerHTML = fallbackCloud
+            ? `<img class="radar-cloud-fallback" loading="lazy" decoding="async" src="${fallbackCloud}" alt="Cloud layer">`
+            : "";
+    }
+
+    const frontImage = cacheBustUrl(frontsImageUrl, frameKey);
+    frontsContainer.innerHTML = frontImage
+        ? `<img class="radar-fronts-image" loading="lazy" decoding="async" src="${frontImage}" alt="Current frontal analysis">`
+        : "";
+
+    applyRadarViewTransform();
 }
 
 function neoClassFromDistance(km) {
@@ -1032,17 +1401,31 @@ async function loadRadarSnapshot() {
         const mapData = await fetchJson("https://api.rainviewer.com/public/weather-maps.json", { timeoutMs: 7000, retries: 1 });
         const host = mapData?.host;
         const frames = Array.isArray(mapData?.radar?.past) ? mapData.radar.past : [];
+        const cloudFrames = Array.isArray(mapData?.satellite?.infrared) ? mapData.satellite.infrared : [];
         const frame = frames.length > 0 ? frames[frames.length - 1] : null;
+        const cloudFrame = cloudFrames.length > 0 ? cloudFrames[cloudFrames.length - 1] : null;
         const path = frame?.path;
+        const cloudPath = cloudFrame?.path || null;
 
         if (!host || !path) {
             throw new Error("Radar frame unavailable");
         }
 
-        renderRadarTileLayers(host, path, APP_CONFIG.radar.lat, APP_CONFIG.radar.lon, APP_CONFIG.radar.zoom, APP_CONFIG.radar.tileRadius);
+        renderRadarTileLayers(
+            host,
+            path,
+            cloudPath,
+            APP_CONFIG.radar.lat,
+            APP_CONFIG.radar.lon,
+            APP_CONFIG.radar.zoom,
+            APP_CONFIG.radar.tileRadius,
+            APP_CONFIG.radar.frontsImage,
+            frame?.time || Date.now()
+        );
         const frameTime = typeof frame.time === "number" ? new Date(frame.time * 1000).toLocaleTimeString() : nowLabel();
-        markHealth("radar", "ok", "Static mode");
-        meta.innerHTML = `Texas regional radar | Frame: ${escapeHtml(frameTime)} | Refreshed: ${escapeHtml(nowLabel())}${healthLine("radar")}`;
+        const cloudText = cloudPath ? "RainViewer infrared" : "GOES fallback";
+        markHealth("radar", "ok", "Interactive mode");
+        meta.innerHTML = `Texas regional radar | Frame: ${escapeHtml(frameTime)} | Clouds: ${escapeHtml(cloudText)} | Fronts: WPC analysis | Refreshed: ${escapeHtml(nowLabel())}${healthLine("radar")}`;
     } catch (err) {
         console.error("Radar snapshot error:", err);
         markHealth("radar", "offline", "RainViewer unavailable");
@@ -1203,7 +1586,21 @@ async function loadSolar() {
             ${plasmaLine}
             <div class="item" style="font-size:10px;opacity:0.6;">Updated: ${escapeHtml(time)}</div>
         `;
-        drawChart("kpChart", kpHistory, 9, { yLabel: "Kp", xLabel: "Time" });
+        drawChart("kpChart", kpHistory, 9, {
+            strokeColor: color,
+            windowHours: TREND_WINDOW_HOURS,
+            xTicks: [
+                { ratio: 0, label: "-24h", align: "left", offset: 2 },
+                { ratio: 0.5, label: "-12h", align: "center", offset: 0 },
+                { ratio: 0.75, label: "-6h", align: "center", offset: 0 },
+                { ratio: 1, label: "0", align: "right", offset: -4 }
+            ],
+            bands: [
+                { min: 0, max: 4, color: "rgba(0,255,204,0.06)" },
+                { min: 4, max: 5, color: "rgba(255,170,0,0.08)" },
+                { min: 5, max: 9, color: "rgba(255,51,51,0.10)" }
+            ]
+        });
         renderGraphHealth("solar", "solarHealth");
     } catch (err) {
         console.error("Solar Error:", err);
@@ -1243,15 +1640,35 @@ async function loadSchumann() {
         updateWidgetAlert("schumann", schAlert);
         const source = data?.source || "configured-source";
         const mode = data?.mode || "live";
+        const componentValues = data?.components && typeof data.components === "object"
+            ? Object.entries(data.components)
+                .map(([name, details]) => `${name}:${toNumber(details?.weighted, 0).toFixed(1)}`)
+                .join(" | ")
+            : "";
 
         markHealth("schumann", "ok", `Source: ${mode}`);
         el.innerHTML = `
             <div class="item">Response: <span style="color:${color}">${responseValue.toFixed(2)} ${escapeHtml(unit)}</span></div>
             <div class="item" style="font-size:10px;opacity:0.8;">24h Max: ${schMax24h.toFixed(2)} | Avg: ${schAvg24h.toFixed(2)} | Trend: <span style="color:${schTrend.color}">${schTrend.label}</span></div>
             <div class="item" style="font-size:10px;opacity:0.7;">Source: ${escapeHtml(source)} | Updated: ${escapeHtml(formatEventTime(observedAt).replace("Time: ", ""))}</div>
+            ${componentValues ? `<div class="item" style="font-size:10px;opacity:0.7;">Components: ${escapeHtml(componentValues)}</div>` : ""}
         `;
 
-        drawChart("schumannChart", schumannHistory, 60, { yLabel: "Resp", xLabel: "Time" });
+        drawChart("schumannChart", schumannHistory, 60, {
+            strokeColor: color,
+            windowHours: TREND_WINDOW_HOURS,
+            xTicks: [
+                { ratio: 0, label: "-24h", align: "left", offset: 2 },
+                { ratio: 0.5, label: "-12h", align: "center", offset: 0 },
+                { ratio: 0.75, label: "-6h", align: "center", offset: 0 },
+                { ratio: 1, label: "0", align: "right", offset: -4 }
+            ],
+            bands: [
+                { min: 0, max: 20, color: "rgba(0,255,204,0.06)" },
+                { min: 20, max: 30, color: "rgba(255,170,0,0.08)" },
+                { min: 30, max: 60, color: "rgba(255,51,51,0.10)" }
+            ]
+        });
         renderGraphHealth("schumann", "schumannHealth");
 
     } catch (err) {
@@ -1314,11 +1731,11 @@ async function loadTsunami() {
         }
         const features = Array.isArray(data?.features) ? data.features : [];
         const filtered = source === "proxy"
-            ? features
+            ? features.filter((f) => isTsunamiRelated(f))
             : features.filter((f) => isTsunamiRelated(f) && isCriticalAlert(f));
 
         tsunamiItems = sortTsunamiFeatures(filtered)
-            .slice(0, 5)
+            .slice(0, 3)
             .map((a) => {
                 const p = a?.properties ?? {};
                 const event = p.event ?? "Tsunami-related alert";
@@ -1510,12 +1927,20 @@ async function loadWeather() {
     const locationLabel = APP_CONFIG.location.label;
 
     try {
-        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,uv_index,precipitation_probability&daily=moon_phase&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,uv_index,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
         const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`;
+        const localAlertsUrl = `https://api.weather.gov/alerts/active?point=${lat},${lon}`;
 
-        const [weatherRes, airRes] = await Promise.all([
-            fetchJson(weatherUrl, { timeoutMs: 8000, retries: 1 }),
-            fetchJson(airUrl, { timeoutMs: 8000, retries: 1 }).catch(() => ({ current: { us_aqi: null } }))
+        const [weatherRes, airRes, localAlertsRes] = await Promise.all([
+            fetchJson(weatherUrl, { timeoutMs: 8000, retries: 2 }),
+            fetchJson(airUrl, { timeoutMs: 8000, retries: 1 }).catch(() => ({ current: { us_aqi: null } })),
+            fetchJson(localAlertsUrl, {
+                timeoutMs: 8000,
+                retries: 1,
+                headers: {
+                    "Accept": "application/geo+json,application/json"
+                }
+            }).catch(() => ({ features: [] }))
         ]);
 
         let cur = weatherRes.current;
@@ -1544,16 +1969,82 @@ async function loadWeather() {
         const aqi = toNumber(airRes?.current?.us_aqi, null);
         const apiMoonPhase = weatherRes?.daily?.moon_phase?.[0];
         const phase = moonPhaseLabel(apiMoonPhase ?? calculateMoonPhaseFraction(new Date()));
+        const forecastMax = toNumber(weatherRes?.daily?.temperature_2m_max?.[0], null);
+        const forecastMin = toNumber(weatherRes?.daily?.temperature_2m_min?.[0], null);
+        const forecastPrecip = toNumber(weatherRes?.daily?.precipitation_probability_max?.[0], precipChance);
+        const forecastCode = toNumber(weatherRes?.daily?.weather_code?.[0], null);
 
-        markHealth("weather", "ok");
+        const weatherCodeMap = {
+            0: "Clear",
+            1: "Mostly clear",
+            2: "Partly cloudy",
+            3: "Overcast",
+            45: "Fog",
+            48: "Rime fog",
+            51: "Light drizzle",
+            53: "Drizzle",
+            55: "Dense drizzle",
+            56: "Freezing drizzle",
+            57: "Dense freezing drizzle",
+            61: "Light rain",
+            63: "Rain",
+            65: "Heavy rain",
+            66: "Freezing rain",
+            67: "Heavy freezing rain",
+            71: "Light snow",
+            73: "Snow",
+            75: "Heavy snow",
+            77: "Snow grains",
+            80: "Rain showers",
+            81: "Heavy showers",
+            82: "Violent showers",
+            85: "Snow showers",
+            86: "Heavy snow showers",
+            95: "Thunderstorm",
+            96: "Thunderstorm w/ hail",
+            99: "Severe thunderstorm w/ hail"
+        };
+        const forecastLabel = weatherCodeMap[forecastCode] || "Mixed conditions";
+
+        const localFeatures = sortNwsAlerts(Array.isArray(localAlertsRes?.features) ? localAlertsRes.features : []);
+        const localAlerts = localFeatures.slice(0, 3);
+        const severeLocal = localAlerts.some(isSevereLocalAlert);
+        const localAlertBar = localAlerts.length === 0
+            ? "No local weather alerts"
+            : severeLocal
+                ? "SEVERE LOCAL ALERT ACTIVE"
+                : `${localAlerts.length} local alert${localAlerts.length > 1 ? "s" : ""}`;
+
+        markHealth("weather", severeLocal ? "degraded" : "ok", severeLocal ? "Severe local alert" : "Local conditions normal");
         setWidgetHtml(el, "weather", `
-            <div class="item" style="font-size:10px;opacity:0.7;">Location: ${escapeHtml(locationLabel)}</div>
-            <div class="item">Temp: <span style="color:#00ffcc">${temp !== null ? `${temp.toFixed(1)}°F` : "N/A"}</span> | Feels: ${feelsLike !== null ? `${feelsLike.toFixed(1)}°F` : "N/A"}</div>
-            <div class="item">Humidity: ${humidity !== null ? `${humidity}%` : "N/A"} | Wind: ${wind !== null ? `${wind.toFixed(1)} mph` : "N/A"}</div>
-            <div class="item">Precip: ${precipChance !== null ? `${Math.round(precipChance)}%` : "N/A"} | UV: ${uv !== null ? uv : "N/A"}</div>
-            <div class="item">AQI: <span style="color:${aqi !== null && aqi > 50 ? '#ffaa00' : '#00ffcc'}">${aqi !== null ? aqi : "N/A"}</span></div>
-            <div class="item" style="border-top:1px solid rgba(255,255,255,0.1); margin-top:5px; padding-top:5px;">
-                🌙 ${escapeHtml(phase)}
+            <div class="weather-layout">
+                <div class="weather-main">
+                    <div class="item" style="font-size:10px;opacity:0.7;">Location: ${escapeHtml(locationLabel)}</div>
+                    <div class="item">Temp: <span style="color:#00ffcc">${temp !== null ? `${temp.toFixed(1)}°F` : "N/A"}</span> | Feels: ${feelsLike !== null ? `${feelsLike.toFixed(1)}°F` : "N/A"}</div>
+                    <div class="item">Humidity: ${humidity !== null ? `${humidity}%` : "N/A"} | Wind: ${wind !== null ? `${wind.toFixed(1)} mph` : "N/A"}</div>
+                    <div class="item">Precip: ${precipChance !== null ? `${Math.round(precipChance)}%` : "N/A"} | UV: ${uv !== null ? uv : "N/A"}</div>
+                    <div class="item">AQI: <span style="color:${aqi !== null && aqi > 50 ? '#ffaa00' : '#00ffcc'}">${aqi !== null ? aqi : "N/A"}</span></div>
+                    <div class="item" style="border-top:1px solid rgba(255,255,255,0.1); margin-top:5px; padding-top:5px;">
+                        🌙 ${escapeHtml(phase)}
+                    </div>
+                </div>
+                <div class="weather-side">
+                    <div class="weather-side-title">Current Forecast</div>
+                    <div class="item">${escapeHtml(forecastLabel)}</div>
+                    <div class="item" style="font-size:10px;opacity:0.85;">High: ${forecastMax !== null ? `${forecastMax.toFixed(0)}°F` : "N/A"} | Low: ${forecastMin !== null ? `${forecastMin.toFixed(0)}°F` : "N/A"}</div>
+                    <div class="item" style="font-size:10px;opacity:0.85;">Rain chance: ${forecastPrecip !== null ? `${Math.round(forecastPrecip)}%` : "N/A"}</div>
+                    <div class="weather-side-title" style="margin-top:8px;">Current Local Weather Alerts</div>
+                    <div class="weather-alert-bar ${severeLocal ? "severe" : ""}">${escapeHtml(localAlertBar)}</div>
+                    ${localAlerts.length === 0
+                        ? '<div class="item" style="font-size:10px;opacity:0.7;">No active point alerts.</div>'
+                        : localAlerts.map((alert) => `
+                            <div class="item" style="font-size:10px;line-height:1.35;">
+                                <a href="${safeHref(alert?.id)}" target="_blank" rel="noopener noreferrer" style="color:${isSevereLocalAlert(alert) ? "#ff8a8a" : "#ffd166"};text-decoration:none;">
+                                    ${escapeHtml(alert?.properties?.event || "Weather Alert")}
+                                </a>
+                            </div>
+                        `).join("")}
+                </div>
             </div>
             <div class="item" style="font-size:10px;opacity:0.6;">Updated: ${nowLabel()}</div>
         `);
@@ -1573,6 +2064,9 @@ function drawChart(id, data, maxVal, options = {}) {
 
     if (!data || data.length < 2) return;
 
+    const windowHours = Number.isFinite(options.windowHours) ? options.windowHours : TREND_WINDOW_HOURS;
+    const windowMs = Math.max(3600000, windowHours * 3600000);
+
     const points = data.map((entry, index) => {
         if (typeof entry === "number") {
             return { ts: Date.now() - ((data.length - index) * 60000), value: entry };
@@ -1582,19 +2076,39 @@ function drawChart(id, data, maxVal, options = {}) {
 
     if (points.length < 2) return;
 
+    points.sort((a, b) => a.ts - b.ts);
+
     canvas.width = canvas.clientWidth || 300 ;
     canvas.height = canvas.clientHeight || 80;
 
     const padL = 34;
-    const padR = 8;
+    const padR = 40;
     const padT = 8;
-    const padB = 16;
+    const padB = 22;
     const plotW = canvas.width - padL - padR;
     const plotH = canvas.height - padT - padB;
+    const xTicks = Array.isArray(options.xTicks) && options.xTicks.length
+        ? options.xTicks
+        : [
+            { ratio: 0, label: `-${windowHours}h`, align: "left", offset: 2 },
+            { ratio: 0.5, label: `-${Math.round(windowHours / 2)}h`, align: "center", offset: 0 },
+            { ratio: 1, label: "0", align: "right", offset: -4 }
+        ];
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle = "rgba(255,255,255,0.8)";
     ctx.font = "10px Arial";
+
+    if (Array.isArray(options.bands)) {
+        options.bands.forEach((band) => {
+            const bandMin = Math.max(0, Math.min(maxVal, toNumber(band?.min, 0)));
+            const bandMax = Math.max(bandMin, Math.min(maxVal, toNumber(band?.max, maxVal)));
+            const top = padT + plotH - (bandMax / maxVal) * plotH;
+            const bottom = padT + plotH - (bandMin / maxVal) * plotH;
+            ctx.fillStyle = band?.color || "rgba(255,255,255,0.04)";
+            ctx.fillRect(padL, top, plotW, Math.max(1, bottom - top));
+        });
+    }
 
     ctx.strokeStyle = "rgba(255,255,255,0.25)";
     ctx.lineWidth = 1;
@@ -1618,44 +2132,77 @@ function drawChart(id, data, maxVal, options = {}) {
         ctx.fillText(val.toFixed(0), 2, y + 3);
     }
 
-    const minTs = points[0].ts;
-    const maxTs = points[points.length - 1].ts;
-    const span = Math.max(1, maxTs - minTs);
+    const distinctTs = new Set(points.map((point) => point.ts)).size;
+    const rawMaxTs = points[points.length - 1].ts;
+    const rawMinTs = points[0].ts;
+    const rawSpan = Math.max(1, rawMaxTs - rawMinTs);
+    const hasUsableTimeline = distinctTs > 1 && rawSpan > 60000;
 
-    const xTicks = 3;
-    for (let i = 0; i <= xTicks; i++) {
-        const ratio = i / xTicks;
+    const maxTs = Math.max(rawMaxTs, Date.now());
+    const minTs = maxTs - windowMs;
+    const span = windowMs;
+
+    const chartPoints = hasUsableTimeline
+        ? points.map((point) => ({
+            ts: point.ts,
+            value: point.value
+        }))
+        : points.map((point, index) => ({
+            ts: minTs + ((span * index) / Math.max(1, points.length - 1)),
+            value: point.value
+        }));
+
+    xTicks.forEach((tick) => {
+        const ratio = Math.max(0, Math.min(1, toNumber(tick?.ratio, 0)));
         const x = padL + ratio * plotW;
-        const ts = minTs + ratio * span;
-        const label = new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const label = String(tick?.label || "");
         ctx.fillStyle = "rgba(215,225,235,0.85)";
-        ctx.fillText(label, x - 16, canvas.height - 2);
-    }
+        if (tick?.align === "left") {
+            ctx.textAlign = "left";
+            ctx.fillText(label, x + (toNumber(tick?.offset, 2)), canvas.height - 6);
+        } else if (tick?.align === "right") {
+            ctx.textAlign = "right";
+            ctx.fillText(label, x + (toNumber(tick?.offset, -4)), canvas.height - 6);
+        } else {
+            ctx.textAlign = "center";
+            ctx.fillText(label, x + (toNumber(tick?.offset, 0)), canvas.height - 6);
+        }
+    });
+    ctx.textAlign = "start";
 
     ctx.beginPath();
-    points.forEach((point, i) => {
-        const x = padL + ((point.ts - minTs) / span) * plotW;
+    chartPoints.forEach((point, i) => {
+        const xRatio = Math.max(0, Math.min(1, (point.ts - minTs) / span));
+        const x = padL + xRatio * plotW;
         const y = padT + plotH - (Math.min(maxVal, Math.max(0, point.value)) / maxVal) * plotH;
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
 
-    let color = "#00ffcc";
-    const latest = points[points.length - 1].value;
-
-    if (latest > maxVal * 0.7) color = "#ff3333";
-    else if (latest > maxVal * 0.5) color = "#ffaa00";
-
-    ctx.strokeStyle = color;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = options.strokeColor || "#00ffcc";
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    if (options.yLabel) {
-        ctx.fillStyle = "rgba(215,225,235,0.9)";
-        ctx.fillText(options.yLabel, 2, 10);
-    }
-    if (options.xLabel) {
-        ctx.fillStyle = "rgba(215,225,235,0.9)";
-        ctx.fillText(options.xLabel, canvas.width - 30, canvas.height - 2);
+    ctx.fillStyle = "rgba(215,225,235,0.35)";
+    chartPoints.forEach((point) => {
+        const xRatio = Math.max(0, Math.min(1, (point.ts - minTs) / span));
+        const x = padL + xRatio * plotW;
+        const y = padT + plotH - (Math.min(maxVal, Math.max(0, point.value)) / maxVal) * plotH;
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    const latestPoint = chartPoints[chartPoints.length - 1];
+    if (latestPoint) {
+        const xRatio = Math.max(0, Math.min(1, (latestPoint.ts - minTs) / span));
+        const x = padL + xRatio * plotW;
+        const y = padT + plotH - (Math.min(maxVal, Math.max(0, latestPoint.value)) / maxVal) * plotH;
+        ctx.fillStyle = options.strokeColor || "#00ffcc";
+        ctx.beginPath();
+        ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 
@@ -1676,6 +2223,7 @@ async function initializeDashboard() {
     await loadRuntimeConfig();
     await restoreTrendHistory();
     startBackgroundRotation();
+    initRadarInteractions();
     renderHeartbeat();
     updateAlertsModeButton();
 

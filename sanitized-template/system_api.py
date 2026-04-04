@@ -31,8 +31,10 @@ CORS(app, resources={
 start_time = time.time()
 neo_cache = {}
 tsunami_cache = {"cached_at": 0, "payload": None}
+schumann_cache = {"cached_at": 0, "payload": None}
 NEO_CACHE_TTL_SECONDS = 6 * 3600
 TSUNAMI_CACHE_TTL_SECONDS = 120
+SCHUMANN_DERIVED_TTL_SECONDS = 300
 LUNAR_DISTANCE_KM = 384400
 NEAR_MISS_LD_THRESHOLD = 0.75
 CLOSE_LD_THRESHOLD = 3.0
@@ -93,6 +95,10 @@ def to_int(value):
 
 def normalize_text(value):
     return str(value or "unknown").strip().lower()
+
+
+def clamp(value, min_value, max_value):
+    return max(min_value, min(max_value, value))
 
 
 def ensure_data_dir():
@@ -214,6 +220,165 @@ def save_trend_history_file(payload):
     ensure_data_dir()
     with open(TREND_HISTORY_PATH, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, ensure_ascii=True, separators=(",", ":"))
+
+
+def latest_noaa_kp_value():
+    url = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"
+    data = fetch_json(url, timeout=8)
+
+    if not isinstance(data, list):
+        raise RuntimeError("NOAA Kp payload invalid")
+
+    for row in reversed(data):
+        if isinstance(row, list) and len(row) >= 2:
+            parsed = to_float(row[1])
+            if parsed is not None:
+                return parsed, str(row[0])
+        elif isinstance(row, dict):
+            parsed = to_float(row.get("Kp"))
+            if parsed is not None:
+                return parsed, str(row.get("time_tag") or "")
+
+    raise RuntimeError("NOAA Kp payload missing numeric value")
+
+
+def latest_noaa_plasma_density():
+    url = "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json"
+    data = fetch_json(url, timeout=8)
+
+    if not isinstance(data, list):
+        raise RuntimeError("NOAA plasma payload invalid")
+
+    for row in reversed(data):
+        if isinstance(row, list) and len(row) >= 2:
+            parsed = to_float(row[1])
+            if parsed is not None:
+                return parsed, str(row[0])
+
+    raise RuntimeError("NOAA plasma payload missing numeric value")
+
+
+def latest_noaa_xray_flux():
+    url = "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json"
+    data = fetch_json(url, timeout=8)
+
+    if not isinstance(data, list):
+        raise RuntimeError("NOAA X-ray payload invalid")
+
+    best = None
+    for row in reversed(data):
+        if not isinstance(row, dict):
+            continue
+        # NOAA returns both channels; short-wave (0.1-0.8nm) is most used for flare class.
+        if str(row.get("energy", "")).strip() != "0.1-0.8nm":
+            continue
+        parsed = to_float(row.get("flux"))
+        if parsed is not None:
+            best = (parsed, str(row.get("time_tag") or ""))
+            break
+
+    if best:
+        return best
+    raise RuntimeError("NOAA X-ray payload missing numeric value")
+
+
+def derive_schumann_response():
+    now = time.time()
+    cached = schumann_cache.get("payload")
+    if cached and (now - schumann_cache.get("cached_at", 0) <= SCHUMANN_DERIVED_TTL_SECONDS):
+        return dict(cached)
+
+    components = {}
+    component_errors = []
+    observed_times = []
+
+    try:
+        kp_value, kp_time = latest_noaa_kp_value()
+        kp_component = clamp((kp_value / 9.0) * 30.0, 0.0, 30.0)
+        components["kp"] = {
+            "raw": kp_value,
+            "weighted": round(kp_component, 2),
+            "scale": "0-30",
+            "observed_at": kp_time,
+            "source": "NOAA SWPC planetary K-index"
+        }
+        if kp_time:
+            observed_times.append(kp_time)
+    except RuntimeError as err:
+        component_errors.append(str(err))
+
+    try:
+        plasma_density, plasma_time = latest_noaa_plasma_density()
+        plasma_component = clamp((plasma_density / 40.0) * 15.0, 0.0, 15.0)
+        components["plasma_density"] = {
+            "raw": plasma_density,
+            "weighted": round(plasma_component, 2),
+            "scale": "0-15",
+            "observed_at": plasma_time,
+            "source": "NOAA SWPC solar-wind plasma"
+        }
+        if plasma_time:
+            observed_times.append(plasma_time)
+    except RuntimeError as err:
+        component_errors.append(str(err))
+
+    try:
+        xray_flux, xray_time = latest_noaa_xray_flux()
+        # Typical operational X-ray range spans about 1e-8 to 1e-4 W/m^2.
+        xray_normalized = (clamp(xray_flux, 1e-8, 1e-4) - 1e-8) / (1e-4 - 1e-8)
+        xray_component = clamp(xray_normalized * 15.0, 0.0, 15.0)
+        components["xray_flux"] = {
+            "raw": xray_flux,
+            "weighted": round(xray_component, 2),
+            "scale": "0-15",
+            "observed_at": xray_time,
+            "source": "NOAA GOES primary X-ray"
+        }
+        if xray_time:
+            observed_times.append(xray_time)
+    except RuntimeError as err:
+        component_errors.append(str(err))
+
+    if not components:
+        raise RuntimeError("Unable to derive Schumann response from upstream feeds")
+
+    derived_value = round(sum(item["weighted"] for item in components.values()), 2)
+    observed_at = max(observed_times) if observed_times else datetime.now(timezone.utc).isoformat()
+
+    payload = {
+        "value": derived_value,
+        "unit": "SRI",
+        "source": "derived-space-weather",
+        "observed_at": observed_at,
+        "mode": "derived",
+        "components": components,
+        "notes": "Derived index from NOAA Kp, solar-wind density, and GOES X-ray flux.",
+        "component_errors": component_errors
+    }
+
+    schumann_cache["cached_at"] = now
+    schumann_cache["payload"] = payload
+    return dict(payload)
+
+
+def iter_configured_schumann_urls():
+    single = os.environ.get("SCHUMANN_API_URL", "").strip()
+    many = os.environ.get("SCHUMANN_API_URLS", "").strip()
+
+    urls = []
+    if many:
+        urls.extend([u.strip() for u in many.split(",") if u.strip()])
+    if single:
+        urls.insert(0, single)
+
+    deduped = []
+    seen = set()
+    for url in urls:
+        if url in seen:
+            continue
+        seen.add(url)
+        deduped.append(url)
+    return deduped
 
 
 @app.route("/system")
@@ -340,21 +505,34 @@ def tsunami_alerts():
 
 @app.route("/schumann-response")
 def schumann_response():
-    upstream = os.environ.get("SCHUMANN_API_URL", "").strip()
+    upstream_urls = iter_configured_schumann_urls()
     value_path = os.environ.get("SCHUMANN_VALUE_PATH", "").strip() or None
+    derived_enabled = normalize_text(os.environ.get("SCHUMANN_DERIVED_ENABLED", "1")) not in {"0", "false", "off", "no"}
+    upstream_error = None
+    attempted_sources = []
 
-    if upstream:
+    for upstream in upstream_urls:
+        attempted_sources.append(upstream)
         try:
             data = fetch_json(upstream, timeout=8)
             parsed = adapt_schumann_payload(data, source_hint=upstream, value_path=value_path)
             if parsed:
                 parsed["mode"] = "live"
+                parsed["attempted_sources"] = attempted_sources
                 return jsonify(parsed)
+            upstream_error = "Upstream payload did not contain a usable numeric Schumann value"
         except RuntimeError as err:
-            return jsonify({
-                "error": str(err),
-                "hint": "Set SCHUMANN_API_URL to a compatible JSON endpoint or provide data/schumann_response.json"
-            }), 502
+            upstream_error = str(err)
+
+    if derived_enabled:
+        try:
+            derived = derive_schumann_response()
+            derived["attempted_sources"] = attempted_sources
+            if upstream_error:
+                derived["upstream_error"] = upstream_error
+            return jsonify(derived)
+        except RuntimeError as err:
+            upstream_error = str(err)
 
     if os.path.exists(LOCAL_SCHUMANN_PATH):
         try:
@@ -363,13 +541,18 @@ def schumann_response():
             parsed = adapt_schumann_payload(data, source_hint="local-file", value_path=value_path)
             if parsed:
                 parsed["mode"] = "local-file"
+                parsed["attempted_sources"] = attempted_sources
+                if upstream_error:
+                    parsed["upstream_error"] = upstream_error
                 return jsonify(parsed)
         except (OSError, json.JSONDecodeError):
             return jsonify({"error": "Invalid local Schumann file format"}), 500
 
     return jsonify({
         "error": "Schumann source unavailable",
-        "hint": "Provide data/schumann_response.json with {value, unit, observed_at, source}"
+        "hint": "Set SCHUMANN_API_URL(S), keep SCHUMANN_DERIVED_ENABLED=1, or provide data/schumann_response.json",
+        "attempted_sources": attempted_sources,
+        "upstream_error": upstream_error
     }), 503
 
 

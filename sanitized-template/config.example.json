@@ -8,7 +8,8 @@
     "lat": 32.5,
     "lon": -99.0,
     "zoom": 4,
-    "tileRadius": 1
+    "tileRadius": 1,
+    "frontsImage": "https://www.wpc.ncep.noaa.gov/basicwx/98fndfd.gif"
   },
   "visuals": {
     "backgroundImages": [
