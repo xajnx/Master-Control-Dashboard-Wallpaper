@@ -21,15 +21,9 @@ Full dashboard view:
 
 Widget snapshots:
 
-![System Monitor](Screenshots/sysmon.png)
-![Earthquakes](Screenshots/earthquake.png)
-![Volcano](Screenshots/volcano.png)
-![Solar](Screenshots/solar.png)
-![Schumann](Screenshots/Schumann.png)
-![NEOs](Screenshots/neos.png)
-![Weather](Screenshots/weather.png)
-![Alerts](Screenshots/alerts.png)
-![Radar](Screenshots/radar.png)
+![Img1](Screenshots/img1.png)
+![Img1](Screenshots/img2.png)
+![Img1](Screenshots/img3.png)
 
 Note: `weather.png` intentionally blurs the local city for privacy.
 
