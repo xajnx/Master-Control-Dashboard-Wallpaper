@@ -1,0 +1,256 @@
+# Mission: Implement Correlation Engine for Schumann Dashboard
+
+## System Context
+
+The dashboard currently includes:
+
+1. SRI (Schumann Response Index)
+
+   * Derived from Kp, plasma density, and X-ray flux
+   * Represents **space weather forcing (driver layer)**
+
+2. Spectrogram Panel
+
+   * Displays external ELF Schumann resonance data (image-based)
+   * Represents **observed resonance activity (effect layer)**
+
+## Objective
+
+Extend the system to:
+
+* Extract meaningful signal data from the spectrogram
+* Correlate SRI spikes with observed ELF resonance changes
+* Persist events for historical analysis
+
+This is NOT a visualization task only. This is a **data extraction and correlation system**.
+
+---
+
+## Feature Requirements
+
+### 1. Band-Focused Spectrogram Analysis
+
+Implement a module to extract intensity data from the spectrogram image.
+
+Target:
+
+* Fundamental Schumann band (~7.8 Hz)
+
+Requirements:
+
+* Define a horizontal pixel region corresponding to ~7–9 Hz
+* Sample pixel brightness across that band
+* Compute average intensity per image frame
+
+Function signature:
+
+```js
+function extractBandIntensity(imageData, bandRangeHz, frequencyScale) {
+  // Returns normalized intensity value (0–1 or 0–100)
+}
+```
+
+Notes:
+
+* frequencyScale maps pixel Y → Hz
+* Keep implementation modular for future multi-band support
+
+---
+
+### 2. Time-Series Buffer for Observations
+
+Create rolling buffers:
+
+```js
+const sriHistory = [];
+const schumannHistory = [];
+```
+
+Each entry:
+
+```js
+{
+  timestamp: Date,
+  value: Number
+}
+```
+
+Requirements:
+
+* Maintain at least 24 hours of data
+* Sync timestamps between SRI and spectrogram samples
+
+---
+
+### 3. Spike Detection (Driver Events)
+
+Implement SRI spike detection:
+
+```js
+function detectSriSpike(currentValue, threshold = 40) {
+  return currentValue >= threshold;
+}
+```
+
+Enhancements:
+
+* Optional rate-of-change detection (delta over time)
+
+---
+
+### 4. Response Detection (Effect Events)
+
+Detect increases in Schumann band intensity:
+
+```js
+function detectSchumannResponse(history, windowMinutes = 120) {
+  // Analyze intensity increase after SRI spike
+}
+```
+
+Requirements:
+
+* Compare baseline vs post-spike intensity
+* Identify meaningful increases (configurable threshold)
+
+---
+
+### 5. Correlation Engine
+
+Core logic:
+
+When SRI spike detected:
+
+1. Record spike timestamp
+2. Monitor Schumann intensity for next 0–120 minutes
+3. Detect:
+
+   * Peak intensity
+   * Time delay (lag)
+
+Produce event object:
+
+```js
+{
+  timestamp: Date,
+  sri_peak: Number,
+  schumann_peak: Number,
+  lag_minutes: Number,
+  correlation_strength: Number
+}
+```
+
+---
+
+### 6. Event Logging System
+
+Persist correlation events:
+
+Storage options:
+
+* Local JSON file
+* IndexedDB (preferred for browser)
+
+Example schema:
+
+```js
+{
+  id: string,
+  timestamp: Date,
+  sri: {
+    value: Number,
+    kp: Number,
+    plasma: Number,
+    xray: Number
+  },
+  schumann: {
+    intensity: Number
+  },
+  lag_minutes: Number
+}
+```
+
+Requirements:
+
+* Append-only log
+* Queryable by time range
+
+---
+
+### 7. Visualization Layer (Minimal but Clear)
+
+Add:
+
+* Overlay markers on SRI graph for detected spikes
+* Indicator when Schumann response confirmed
+
+Display:
+
+* “Response detected (lag: XX min)”
+* “No response detected”
+
+Do NOT overcomplicate visuals.
+
+---
+
+### 8. False Positive Handling
+
+Track cases where:
+
+* SRI spike occurs with no Schumann response
+* Schumann spike occurs without SRI trigger
+
+Log both for analysis.
+
+---
+
+### 9. Performance Constraints
+
+* Do not block UI thread during image processing
+* Use async processing or Web Workers if needed
+* Cache spectrogram images (5 min minimum)
+
+---
+
+### 10. Future-Proof Hooks
+
+Prepare for:
+
+* Multi-band analysis (14 Hz, 20 Hz, etc.)
+* Multiple station comparison
+* Local hardware input integration
+
+---
+
+## Non-Goals
+
+* Do NOT assume causation
+* Do NOT fabricate missing data
+* Do NOT label correlation as prediction
+
+---
+
+## End State
+
+The system evolves into:
+
+1. Driver Layer → SRI (cause)
+2. Observation Layer → Spectrogram (effect)
+3. Correlation Layer → Event detection + logging
+
+This enables:
+
+* Empirical pattern discovery
+* Historical analysis
+* Validation of hypotheses
+
+---
+
+## Output Expectations
+
+* Clean modular code
+* Clear separation of concerns
+* Well-commented logic
+* No duplication of existing systems
+
+---
