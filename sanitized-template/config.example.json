@@ -14,6 +14,18 @@
   "schumann": {
     "highSRIThreshold": 40,
     "minCacheMs": 300000,
+    "spectrogramTopHz": 40,
+    "spectrogramBottomHz": 0,
+    "spectrogramPlotLeftRatio": 0.039,
+    "spectrogramPlotRightRatio": 0.81,
+    "spectrogramPlotTopRatio": 0.072,
+    "spectrogramPlotBottomRatio": 0.935,
+    "bandMinHz": 7,
+    "bandMaxHz": 9,
+    "responseMinIncrease": 0.025,
+    "effectSpikeMinIncrease": 0.04,
+    "effectBaselineWindow": 6,
+    "responseBaselineMinutes": 90,
     "sources": [
       {
         "name": "Tomsk",

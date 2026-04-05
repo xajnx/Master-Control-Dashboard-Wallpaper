@@ -99,6 +99,12 @@ Available keys:
 - `SCHUMANN_VALUE_PATH`: optional dot-path to the numeric value inside a custom Schumann payload
 - `SCHUMANN_DERIVED_ENABLED`: when enabled (default), computes a live derived Schumann Response Index from NOAA feeds when direct Schumann source is missing
 
+The backend also proxies NWS weather alerts for both statewide and point-based queries. Those responses are cached server-side for short intervals and revalidated against weather.gov so alert widgets can refresh more frequently without every browser instance polling NWS directly.
+
+Phase 1 correlation logging is now available via `POST /correlation-events` and `GET /correlation-events`. Events are append-only and stored in `data/correlation_events.jsonl` for downstream parsing and analysis.
+
+Phase 2 adds `GET /spectrogram-proxy?source=<url>` so spectrogram frames can be fetched via same-origin for safe pixel analysis. Optional `schumann.spectrogramTopHz` and `schumann.spectrogramBottomHz` can be set in `config.local.json` to tune pixel-to-frequency mapping.
+
 ### Frontend config: `config.local.json`
 
 Set these values for your local install:

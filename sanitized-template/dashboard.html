@@ -564,15 +564,78 @@ canvas {
     height: 118px;
     object-fit: cover;
     background: rgba(0,0,0,0.35);
-        height: 96px;
+}
 
 .schumann-status-row {
     font-size: 9px;
-    line-height: 1.2;
-    opacity: 0.82;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.25;
+    opacity: 0.9;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
+}
+
+.schumann-status-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.schumann-status-row.compact {
+    opacity: 0.86;
+}
+
+.schumann-chip {
+    display: inline-block;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 1px 6px;
+    border-radius: 999px;
+    margin-right: 4px;
+    margin-bottom: 2px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.08);
+    color: rgba(235,245,255,0.95);
+}
+
+.schumann-chip-source {
+    background: rgba(64,210,255,0.14);
+    border-color: rgba(64,210,255,0.45);
+}
+
+.schumann-chip-status-ok {
+    background: rgba(104,255,176,0.16);
+    border-color: rgba(104,255,176,0.5);
+    color: #7be495;
+}
+
+.schumann-chip-status-degraded {
+    background: rgba(255,209,102,0.16);
+    border-color: rgba(255,209,102,0.5);
+    color: #ffd166;
+}
+
+.schumann-chip-status-offline {
+    background: rgba(255,138,138,0.16);
+    border-color: rgba(255,138,138,0.5);
+    color: #ff8a8a;
+}
+
+.schumann-chip-alert {
+    background: rgba(255,92,92,0.18);
+    border-color: rgba(255,92,92,0.6);
+    color: #ffd4d4;
+}
+
+.schumann-kpi {
+    font-weight: 700;
+    color: #91f7ff;
+}
+
+.schumann-row-label {
+    color: rgba(205,225,255,0.78);
 }
 
 .schumann-spectrogram-error {
@@ -973,6 +1036,29 @@ const schumannSpectrogramState = {
     lastError: "",
     sourceFailures: []
 };
+const schumannObservationHistory = [];
+const sriHistory = schumannHistory;
+const CORRELATION_DB_NAME = "mission_control_correlation";
+const CORRELATION_DB_VERSION = 1;
+const CORRELATION_STORE = "events";
+const CORRELATION_WINDOW_MINUTES = 120;
+const CORRELATION_RETENTION_MS = 24 * 60 * 60 * 1000;
+const correlationEngineState = {
+    dbPromise: null,
+    pendingSpikes: [],
+    events: [],
+    latestObservationValue: null,
+    latestObservationTs: null,
+    latestObservationSource: "",
+    stats: {
+        spikes: 0,
+        responses: 0,
+        noResponses: 0,
+        falsePositives: 0,
+        persisted: 0
+    },
+    lastSummary: "Correlation idle"
+};
 
 try {
     alertsCriticalOnly = localStorage.getItem(ALERTS_MODE_KEY) === "1";
@@ -1080,7 +1166,7 @@ function healthLine(id) {
     if (h.lastOkAt) detailParts.push(`Last OK: ${h.lastOkAt}`);
     if (h.detail) detailParts.push(String(h.detail).trim());
     const detailText = detailParts.join(" | ");
-    const compactDetail = detailText.length > 54 ? `${detailText.slice(0, 51)}...` : detailText;
+    const compactDetail = detailText.length > 120 ? `${detailText.slice(0, 117)}...` : detailText;
     return `<div class="health ${h.state}"><div class="health-row">${escapeHtml(primary)}</div><div class="health-row health-detail">${escapeHtml(compactDetail)}</div></div>`;
 }
 
@@ -1120,6 +1206,388 @@ function formatEventTime(value) {
     const ts = parseTimeMs(value);
     if (!ts) return "Time: Unknown";
     return `Time: ${new Date(ts).toLocaleString()}`;
+}
+
+function extractBandIntensity(imageData, bandRangeHz, frequencyScale) {
+    if (!imageData || !imageData.data || !frequencyScale || typeof frequencyScale.yToHz !== "function") {
+        return null;
+    }
+
+    const minHz = toNumber(bandRangeHz?.[0], null);
+    const maxHz = toNumber(bandRangeHz?.[1], null);
+    if (minHz === null || maxHz === null || minHz >= maxHz) return null;
+
+    const { data, width, height } = imageData;
+    if (!width || !height || !data.length) return null;
+
+    const bounds = typeof frequencyScale.getBounds === "function"
+        ? frequencyScale.getBounds(width, height)
+        : { left: 0, right: width, top: 0, bottom: height };
+    const left = Math.max(0, Math.min(width - 1, Math.floor(toNumber(bounds.left, 0))));
+    const right = Math.max(left + 1, Math.min(width, Math.ceil(toNumber(bounds.right, width))));
+    const top = Math.max(0, Math.min(height - 1, Math.floor(toNumber(bounds.top, 0))));
+    const bottom = Math.max(top + 1, Math.min(height, Math.ceil(toNumber(bounds.bottom, height))));
+
+    let bandSum = 0;
+    let bandCount = 0;
+    let plotSum = 0;
+    let plotCount = 0;
+    for (let y = top; y < bottom; y++) {
+        const hz = toNumber(frequencyScale.yToHz(y, top, bottom), null);
+        if (hz === null || hz < minHz || hz > maxHz) continue;
+
+        for (let x = left; x < right; x++) {
+            const idx = (y * width + x) * 4;
+            const r = data[idx];
+            const g = data[idx + 1];
+            const b = data[idx + 2];
+            const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            bandSum += luminance;
+            bandCount += 1;
+        }
+    }
+
+    for (let y = top; y < bottom; y++) {
+        for (let x = left; x < right; x++) {
+            const idx = (y * width + x) * 4;
+            const r = data[idx];
+            const g = data[idx + 1];
+            const b = data[idx + 2];
+            const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            plotSum += luminance;
+            plotCount += 1;
+        }
+    }
+
+    if (bandCount === 0 || plotCount === 0) return null;
+    const bandAvg = bandSum / bandCount;
+    const plotAvg = plotSum / plotCount;
+    const normalized = clamp(bandAvg / 255, 0, 1);
+    const contrastBoost = clamp((bandAvg - plotAvg) / 255, -1, 1);
+    return clamp(normalized + Math.max(0, contrastBoost) * 0.35, 0, 1);
+}
+
+function getSchumannAnalysisConfig() {
+    const raw = APP_CONFIG?.schumann || {};
+    return {
+        bandRangeHz: [
+            toNumber(raw?.bandMinHz, 7) || 7,
+            toNumber(raw?.bandMaxHz, 9) || 9
+        ],
+        spectrogramTopHz: toNumber(raw?.spectrogramTopHz, 40) || 40,
+        spectrogramBottomHz: toNumber(raw?.spectrogramBottomHz, 0) || 0,
+        plotLeftRatio: clamp(toNumber(raw?.spectrogramPlotLeftRatio, 0.039), 0, 0.4),
+        plotRightRatio: clamp(toNumber(raw?.spectrogramPlotRightRatio, 0.81), 0.5, 1),
+        plotTopRatio: clamp(toNumber(raw?.spectrogramPlotTopRatio, 0.072), 0, 0.4),
+        plotBottomRatio: clamp(toNumber(raw?.spectrogramPlotBottomRatio, 0.935), 0.6, 1),
+        responseMinIncrease: Math.max(0.005, toNumber(raw?.responseMinIncrease, 0.025) || 0.025),
+        effectSpikeMinIncrease: Math.max(0.005, toNumber(raw?.effectSpikeMinIncrease, 0.04) || 0.04),
+        effectBaselineWindow: Math.max(3, Math.round(toNumber(raw?.effectBaselineWindow, 6) || 6)),
+        responseBaselineMinutes: Math.max(30, Math.round(toNumber(raw?.responseBaselineMinutes, 90) || 90))
+    };
+}
+
+function detectSriSpike(currentValue, threshold = 40) {
+    const current = toNumber(currentValue, null);
+    return current !== null && current >= threshold;
+}
+
+function detectSriRateOfChange(history, deltaThreshold = 4) {
+    if (!Array.isArray(history) || history.length < 2) return false;
+    const latest = history[history.length - 1];
+    const previous = history[history.length - 2];
+    const latestValue = toNumber(latest?.value, null);
+    const previousValue = toNumber(previous?.value, null);
+    if (latestValue === null || previousValue === null) return false;
+    return (latestValue - previousValue) >= deltaThreshold;
+}
+
+function detectSchumannResponse(history, windowMinutes = 120, options = {}) {
+    if (!Array.isArray(history) || history.length < 4) return { detected: false };
+
+    const startMs = toNumber(options.startMs, null);
+    if (startMs === null) return { detected: false };
+
+    const baselineMinutes = toNumber(options.baselineMinutes, getSchumannAnalysisConfig().responseBaselineMinutes) || getSchumannAnalysisConfig().responseBaselineMinutes;
+    const minIncrease = toNumber(options.minIncrease, getSchumannAnalysisConfig().responseMinIncrease) || getSchumannAnalysisConfig().responseMinIncrease;
+    const endMs = startMs + windowMinutes * 60000;
+    const baselineStart = startMs - baselineMinutes * 60000;
+
+    const baselineSamples = history.filter((s) => s.ts >= baselineStart && s.ts < startMs && Number.isFinite(s.value));
+    const postSamples = history.filter((s) => s.ts >= startMs && s.ts <= endMs && Number.isFinite(s.value));
+    if (!baselineSamples.length || !postSamples.length) return { detected: false };
+
+    const baseline = baselineSamples.reduce((sum, s) => sum + s.value, 0) / baselineSamples.length;
+    const peakSample = postSamples.reduce((best, sample) => (best.value >= sample.value ? best : sample), postSamples[0]);
+    const increase = peakSample.value - baseline;
+    const lagMinutes = Math.max(0, Math.round((peakSample.ts - startMs) / 60000));
+    const strength = clamp(increase / Math.max(minIncrease, 0.0001), 0, 1);
+
+    return {
+        detected: increase >= minIncrease,
+        baseline,
+        peak: peakSample.value,
+        lagMinutes,
+        increase,
+        strength
+    };
+}
+
+function correlationEventId(prefix = "corr") {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return `${prefix}-${crypto.randomUUID()}`;
+    }
+    return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+}
+
+function trimHistoryByAge(history, retentionMs = CORRELATION_RETENTION_MS) {
+    if (!Array.isArray(history) || history.length === 0) return;
+    const cutoff = Date.now() - retentionMs;
+    while (history.length && history[0].ts < cutoff) {
+        history.shift();
+    }
+}
+
+function queueCorrelationSummary() {
+    const s = correlationEngineState.stats;
+    const open = correlationEngineState.pendingSpikes.length;
+    correlationEngineState.lastSummary = `Corr spikes:${s.spikes} resp:${s.responses} miss:${s.noResponses} fp:${s.falsePositives} open:${open}`;
+}
+
+function openCorrelationDb() {
+    if (correlationEngineState.dbPromise) return correlationEngineState.dbPromise;
+    correlationEngineState.dbPromise = new Promise((resolve, reject) => {
+        if (typeof indexedDB === "undefined") {
+            reject(new Error("IndexedDB unavailable"));
+            return;
+        }
+
+        const request = indexedDB.open(CORRELATION_DB_NAME, CORRELATION_DB_VERSION);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(CORRELATION_STORE)) {
+                const store = db.createObjectStore(CORRELATION_STORE, { keyPath: "id" });
+                store.createIndex("timestamp", "timestamp", { unique: false });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error("IndexedDB open failed"));
+    });
+    return correlationEngineState.dbPromise;
+}
+
+async function persistCorrelationEventIndexedDb(event) {
+    try {
+        const db = await openCorrelationDb();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(CORRELATION_STORE, "readwrite");
+            tx.objectStore(CORRELATION_STORE).put(event);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error("IndexedDB write failed"));
+        });
+        correlationEngineState.stats.persisted += 1;
+    } catch (err) {
+        console.warn("Correlation IndexedDB write skipped:", err?.message || err);
+    }
+}
+
+async function persistCorrelationEventBackend(event) {
+    try {
+        await fetch(apiUrl("/correlation-events"), {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(event)
+        });
+    } catch (_) {
+        // backend persistence is optional; local IndexedDB remains primary
+    }
+}
+
+function recordCorrelationEvent(event) {
+    correlationEngineState.events.push(event);
+    if (correlationEngineState.events.length > 250) {
+        correlationEngineState.events.splice(0, correlationEngineState.events.length - 250);
+    }
+    queueCorrelationSummary();
+
+    // Fire and forget persistence so UI remains responsive.
+    void persistCorrelationEventIndexedDb(event);
+    void persistCorrelationEventBackend(event);
+}
+
+function buildCorrelationEventBase(spikeTsMs, sriValue, context = {}) {
+    const tsIso = new Date(spikeTsMs).toISOString();
+    return {
+        id: correlationEventId("corr"),
+        timestamp: tsIso,
+        sri: {
+            value: toNumber(sriValue, null),
+            kp: toNumber(context.kp, null),
+            plasma: toNumber(context.plasma, null),
+            xray: toNumber(context.xray, null)
+        },
+        schumann: {
+            intensity: null
+        },
+        lag_minutes: null,
+        correlation_strength: null,
+        status: "pending",
+        event_type: "driver_spike"
+    };
+}
+
+function detectEffectSpike(history, options = {}) {
+    if (!Array.isArray(history) || history.length < 6) return { spike: false };
+
+    const analysisConfig = getSchumannAnalysisConfig();
+    const baselineWindow = toNumber(options.baselineWindow, analysisConfig.effectBaselineWindow) || analysisConfig.effectBaselineWindow;
+    const minIncrease = toNumber(options.minIncrease, analysisConfig.effectSpikeMinIncrease) || analysisConfig.effectSpikeMinIncrease;
+
+    const latest = history[history.length - 1];
+    const baselineSlice = history.slice(-1 - baselineWindow, -1).filter((s) => Number.isFinite(s.value));
+    if (!latest || !Number.isFinite(latest.value) || baselineSlice.length < 3) return { spike: false };
+
+    const baseline = baselineSlice.reduce((sum, s) => sum + s.value, 0) / baselineSlice.length;
+    const increase = latest.value - baseline;
+    return {
+        spike: increase >= minIncrease,
+        baseline,
+        increase,
+        latest: latest.value
+    };
+}
+
+function recordSchumannObservation(value, tsMs, source = "spectrogram") {
+    const entry = {
+        ts: toNumber(tsMs, Date.now()) || Date.now(),
+        value: toNumber(value, null),
+        source: String(source || "spectrogram")
+    };
+    schumannObservationHistory.push(entry);
+    trimHistoryByAge(schumannObservationHistory);
+
+    if (entry.value === null) return;
+
+    correlationEngineState.latestObservationValue = entry.value;
+    correlationEngineState.latestObservationTs = entry.ts;
+    correlationEngineState.latestObservationSource = entry.source;
+
+    const recentDriver = correlationEngineState.pendingSpikes.some((pending) => {
+        return entry.ts >= pending.startMs && entry.ts <= pending.endMs;
+    });
+    if (recentDriver) return;
+
+    const effectSpike = detectEffectSpike(schumannObservationHistory, {
+        baselineWindow: getSchumannAnalysisConfig().effectBaselineWindow,
+        minIncrease: getSchumannAnalysisConfig().effectSpikeMinIncrease
+    });
+    if (!effectSpike.spike) return;
+
+    const falsePositiveEvent = {
+        id: correlationEventId("fp"),
+        timestamp: new Date(entry.ts).toISOString(),
+        sri: { value: null, kp: null, plasma: null, xray: null },
+        schumann: { intensity: entry.value },
+        lag_minutes: null,
+        correlation_strength: clamp(effectSpike.increase / 0.3, 0, 1),
+        status: "false-positive",
+        event_type: "effect_without_driver",
+        source,
+        baseline: Number(effectSpike.baseline.toFixed(4)),
+        increase: Number(effectSpike.increase.toFixed(4))
+    };
+    correlationEngineState.stats.falsePositives += 1;
+    recordCorrelationEvent(falsePositiveEvent);
+}
+
+function processPendingCorrelationWindows(referenceMs = Date.now()) {
+    if (!correlationEngineState.pendingSpikes.length) {
+        queueCorrelationSummary();
+        return;
+    }
+
+    const nextPending = [];
+    for (const pending of correlationEngineState.pendingSpikes) {
+        const response = detectSchumannResponse(schumannObservationHistory, CORRELATION_WINDOW_MINUTES, {
+            startMs: pending.startMs,
+            baselineMinutes: getSchumannAnalysisConfig().responseBaselineMinutes,
+            minIncrease: getSchumannAnalysisConfig().responseMinIncrease
+        });
+
+        if (response.detected) {
+            pending.event.status = "response-detected";
+            pending.event.event_type = "driver_effect_correlation";
+            pending.event.schumann.intensity = response.peak;
+            pending.event.lag_minutes = response.lagMinutes;
+            pending.event.correlation_strength = Number(response.strength.toFixed(3));
+            correlationEngineState.stats.responses += 1;
+            recordCorrelationEvent(pending.event);
+            continue;
+        }
+
+        if (referenceMs > pending.endMs) {
+            pending.event.status = "no-response";
+            pending.event.event_type = "driver_without_effect";
+            pending.event.correlation_strength = 0;
+            pending.event.reason = "no_numeric_schumann_observation";
+            correlationEngineState.stats.noResponses += 1;
+            recordCorrelationEvent(pending.event);
+            continue;
+        }
+
+        nextPending.push(pending);
+    }
+
+    correlationEngineState.pendingSpikes = nextPending;
+    queueCorrelationSummary();
+}
+
+function registerSriSpikeIfNeeded(sriValue, observedAtMs, context = {}) {
+    const threshold = toNumber(APP_CONFIG?.schumann?.highSRIThreshold, DEFAULT_APP_CONFIG.schumann.highSRIThreshold) || 40;
+    const spike = detectSriSpike(sriValue, threshold) || detectSriRateOfChange(sriHistory, 4);
+    if (!spike) {
+        processPendingCorrelationWindows(observedAtMs);
+        return;
+    }
+
+    const duplicateWindowMs = 15 * 60000;
+    const hasRecent = correlationEngineState.pendingSpikes.some((pending) => Math.abs(pending.startMs - observedAtMs) < duplicateWindowMs);
+    if (hasRecent) {
+        processPendingCorrelationWindows(observedAtMs);
+        return;
+    }
+
+    const baseEvent = buildCorrelationEventBase(observedAtMs, sriValue, context);
+    correlationEngineState.pendingSpikes.push({
+        startMs: observedAtMs,
+        endMs: observedAtMs + CORRELATION_WINDOW_MINUTES * 60000,
+        event: baseEvent
+    });
+    correlationEngineState.stats.spikes += 1;
+    queueCorrelationSummary();
+    processPendingCorrelationWindows(observedAtMs);
+}
+
+function alertFeedStatusLine(data) {
+    const source = normalizeAlertValue(data?.source);
+    const sourceLabelMap = {
+        nws: "Feed: Live NWS",
+        cache: "Feed: Backend cache",
+        "cache-revalidated": "Feed: Cache revalidated",
+        "cache-stale": "Feed: Stale cache",
+        "nws-unavailable": "Feed: NWS unavailable",
+        "invalid-request": "Feed: Invalid request"
+    };
+    const sourceLabel = sourceLabelMap[source] || "Feed: Unknown";
+    const updatedTs = parseTimeMs(data?.updated);
+    const updatedLabel = updatedTs
+        ? `NWS updated ${new Date(updatedTs).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+        : `Checked ${nowLabel()}`;
+    const freshnessLabel = data?.stale ? "Stale" : "Fresh";
+
+    return `<div class="item" style="font-size:10px;opacity:0.65;border-top:1px solid rgba(255,255,255,0.08);margin-top:6px;padding-top:6px;">${escapeHtml(sourceLabel)} | ${escapeHtml(freshnessLabel)} | ${escapeHtml(updatedLabel)}</div>`;
 }
 
 function historyValues(series) {
@@ -1414,6 +1882,21 @@ function formatDeltaMinutes(deltaMs) {
     return `${mins}m`;
 }
 
+function compactSchumannStatusDetail(detail = "") {
+    const normalized = String(detail || "").trim();
+    const map = {
+        "Live frame loaded": "Frame live",
+        "Using cached frame": "Frame cached",
+        "Source outage, using last known frame": "Outage, cached frame",
+        "Source outage with no cached frame": "Outage, no cache",
+        "No spectrogram source configured": "No source",
+        "SRI updated": "SRI refreshed",
+        "SRI feed offline": "SRI feed offline",
+        "Ready": "Ready"
+    };
+    return map[normalized] || normalized || "Ready";
+}
+
 function renderSchumannSpectrogramStatus(message = "", level = "ok") {
     const statusEl = document.getElementById("schumannSpectrogramStatus");
     if (!statusEl) return;
@@ -1434,17 +1917,35 @@ function renderSchumannSpectrogramStatus(message = "", level = "ok") {
         deltaText = `Delta: ${formatDeltaMinutes(deltaMs)}`;
         if (deltaMs > 600000) {
             deltaClass = "schumann-delta-alert";
-            deltaText += " (mismatch >10m)";
+            deltaText += " (drift >10m)";
         }
     }
 
-    const statusColor = level === "offline" ? "#ff8a8a" : (level === "degraded" ? "#ffd166" : "#7be495");
+    const safeLevel = level === "offline" ? "offline" : (level === "degraded" ? "degraded" : "ok");
+    const levelLabel = safeLevel === "offline" ? "OFFLINE" : (safeLevel === "degraded" ? "DEGRADED" : "LIVE");
     const sourceLabel = schumannSpectrogramState.activeSourceName || "None";
-    const detail = message || "Ready";
-    const highMarker = highEvent ? ` | High SRI: ${schumannCorrelationState.sriValue.toFixed(2)}` : "";
+    const detail = compactSchumannStatusDetail(message || "Ready");
+    const highMarker = highEvent ? `<span class="schumann-chip schumann-chip-alert">HIGH SRI ${schumannCorrelationState.sriValue.toFixed(2)}</span>` : "";
+    const latestIntensity = toNumber(correlationEngineState.latestObservationValue, null);
+    const latestTs = toNumber(correlationEngineState.latestObservationTs, null);
+    const latestSource = correlationEngineState.latestObservationSource || "n/a";
+    const bandMarker = latestIntensity !== null
+        ? `<span class="schumann-row-label">Band 7-9:</span> <span class="schumann-kpi">${latestIntensity.toFixed(3)}</span> (${escapeHtml(new Date(latestTs || Date.now()).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))}, ${escapeHtml(latestSource)})`
+        : "<span class=\"schumann-row-label\">Band 7-9:</span> n/a";
+    const correlationMarker = correlationEngineState.lastSummary || "Correlation idle";
+    const driftText = deltaText.replace("Delta:", "Drift:");
 
     statusEl.innerHTML = `
-        <div class="item schumann-status-row ${deltaClass}">Driver (SRI): ${escapeHtml(sriLabel)} | Effect (spectrogram): ${escapeHtml(spectrogramLabel)} | ${escapeHtml(deltaText)} | Source: ${escapeHtml(sourceLabel)} | Status: <span style="color:${statusColor}">${escapeHtml(detail)}</span>${escapeHtml(highMarker)}</div>
+        <div class="item schumann-status-stack">
+            <div class="schumann-status-row ${deltaClass}"><span class="schumann-row-label">SRI feed:</span> ${escapeHtml(sriLabel)} | <span class="schumann-row-label">Spectrogram:</span> ${escapeHtml(spectrogramLabel)} | ${escapeHtml(driftText)}</div>
+            <div class="schumann-status-row">
+                <span class="schumann-chip schumann-chip-source">SRC ${escapeHtml(sourceLabel)}</span>
+                <span class="schumann-chip schumann-chip-status-${safeLevel}">${levelLabel}</span>
+                <span class="schumann-chip">${escapeHtml(detail)}</span>
+                ${highMarker}
+            </div>
+            <div class="schumann-status-row compact">${bandMarker} | ${escapeHtml(correlationMarker)}</div>
+        </div>
     `;
 }
 
@@ -1480,6 +1981,7 @@ async function fetchSpectrogramImage(url, timeoutMs = 12000) {
     return await new Promise((resolve, reject) => {
         const probe = new Image();
         let settled = false;
+        probe.crossOrigin = "anonymous";
         const timer = setTimeout(() => {
             if (settled) return;
             settled = true;
@@ -1504,9 +2006,73 @@ async function fetchSpectrogramImage(url, timeoutMs = 12000) {
     });
 }
 
+function getSpectrogramFrequencyScale() {
+    const analysisConfig = getSchumannAnalysisConfig();
+    const topHz = analysisConfig.spectrogramTopHz;
+    const bottomHz = analysisConfig.spectrogramBottomHz;
+    const maxHz = Math.max(topHz, bottomHz + 1);
+    const minHz = Math.min(bottomHz, maxHz - 1);
+
+    return {
+        getBounds: (width, height) => ({
+            left: width * analysisConfig.plotLeftRatio,
+            right: width * analysisConfig.plotRightRatio,
+            top: height * analysisConfig.plotTopRatio,
+            bottom: height * analysisConfig.plotBottomRatio
+        }),
+        yToHz: (pixelY, topPx, bottomPx) => {
+            const ratio = clamp((pixelY - topPx) / Math.max(1, bottomPx - topPx - 1), 0, 1);
+            return maxHz - (maxHz - minHz) * ratio;
+        }
+    };
+}
+
 function analyzeSpectrogram(imageData) {
-    // Future: extract intensity near the 7.83 Hz band.
-    return null;
+    return extractBandIntensity(imageData, getSchumannAnalysisConfig().bandRangeHz, getSpectrogramFrequencyScale());
+}
+
+async function extractSpectrogramIntensityFromUrl(imageUrl) {
+    try {
+        const response = await fetch(imageUrl, { cache: "no-store" });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const blob = await response.blob();
+
+        let bitmap = null;
+        if (typeof createImageBitmap === "function") {
+            bitmap = await createImageBitmap(blob);
+        }
+
+        const width = bitmap ? bitmap.width : 0;
+        const height = bitmap ? bitmap.height : 0;
+        if (!width || !height) return null;
+
+        let canvas;
+        let ctx;
+        if (typeof OffscreenCanvas !== "undefined") {
+            canvas = new OffscreenCanvas(width, height);
+            ctx = canvas.getContext("2d", { willReadFrequently: true });
+        } else {
+            canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            ctx = canvas.getContext("2d", { willReadFrequently: true });
+        }
+
+        if (!ctx) return null;
+        ctx.drawImage(bitmap, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height);
+        if (bitmap && typeof bitmap.close === "function") {
+            bitmap.close();
+        }
+
+        const extracted = analyzeSpectrogram(imageData);
+        return Number.isFinite(extracted) ? extracted : null;
+    } catch (err) {
+        console.warn("Spectrogram extraction skipped:", err?.message || err);
+        return null;
+    }
 }
 
 function setSchumannSpectrogramError(message = "", level = "degraded") {
@@ -1565,7 +2131,8 @@ async function loadSchumannSpectrogram(forceRefresh = false) {
     const failures = [];
     for (const source of orderedSources) {
         try {
-            const loaded = await fetchSpectrogramImage(source.url);
+            const proxyUrl = apiUrl(`/spectrogram-proxy?source=${encodeURIComponent(source.url)}${forceRefresh ? "&force=1" : ""}`);
+            const loaded = await fetchSpectrogramImage(proxyUrl);
             schumannSpectrogramState.activeSourceName = source.name;
             schumannSpectrogramState.activeSourceUrl = source.url;
             schumannSpectrogramState.lastImageSrc = loaded.src;
@@ -1579,8 +2146,16 @@ async function loadSchumannSpectrogram(forceRefresh = false) {
             renderSchumannSpectrogramStatus("Live frame loaded", "ok");
             setSchumannSpectrogramError("");
 
-            // Hook for future intensity extraction work.
-            setTimeout(() => analyzeSpectrogram(null), 0);
+            // Keep spectrogram processing async so frame rendering is never blocked.
+            setTimeout(() => {
+                void (async () => {
+                    const extracted = await extractSpectrogramIntensityFromUrl(loaded.src);
+                    if (Number.isFinite(extracted)) {
+                        recordSchumannObservation(extracted, loaded.observedAtMs, source.name);
+                    }
+                    processPendingCorrelationWindows(loaded.observedAtMs);
+                })();
+            }, 0);
             return;
         } catch (err) {
             failures.push(`${source.name}: ${err?.message || "fetch failed"}`);
@@ -1682,6 +2257,46 @@ function calculateMoonPhaseFraction(date = new Date()) {
     return cycleDay / synodicMonthDays;
 }
 
+function weatherConditionLabel(code, isDay = null) {
+    const weatherCode = toNumber(code, null);
+    const daylight = toNumber(isDay, null);
+
+    if (weatherCode === null) return "Mixed conditions";
+    if (weatherCode === 0) return daylight === 0 ? "Clear" : "Sunny";
+    if (weatherCode === 1) return daylight === 0 ? "Mostly clear" : "Mostly sunny";
+    if (weatherCode === 2) return "Partly cloudy";
+    if (weatherCode === 3) return "Cloudy";
+
+    const weatherCodeMap = {
+        45: "Fog",
+        48: "Rime fog",
+        51: "Light drizzle",
+        53: "Drizzle",
+        55: "Dense drizzle",
+        56: "Freezing drizzle",
+        57: "Dense freezing drizzle",
+        61: "Light rain",
+        63: "Rain",
+        65: "Heavy rain",
+        66: "Freezing rain",
+        67: "Heavy freezing rain",
+        71: "Light snow",
+        73: "Snow",
+        75: "Heavy snow",
+        77: "Snow grains",
+        80: "Rain showers",
+        81: "Heavy showers",
+        82: "Violent showers",
+        85: "Snow showers",
+        86: "Heavy snow showers",
+        95: "Thunderstorm",
+        96: "Thunderstorm w/ hail",
+        99: "Severe thunderstorm w/ hail"
+    };
+
+    return weatherCodeMap[weatherCode] || "Mixed conditions";
+}
+
 async function fetchJson(url, options = {}) {
     const timeoutMs = options.timeoutMs ?? FETCH_DEFAULT_TIMEOUT;
     const retries = options.retries ?? FETCH_DEFAULT_RETRIES;
@@ -1694,7 +2309,8 @@ async function fetchJson(url, options = {}) {
         try {
             const response = await fetch(url, {
                 signal: controller.signal,
-                headers: options.headers
+                headers: options.headers,
+                cache: options.cache ?? "default"
             });
 
             if (!response.ok) {
@@ -1719,9 +2335,12 @@ function renderQuakesPanel() {
 
     if (tsunamiStatus) statusLines.push(`<div class="item" style="color:#ff6666;">${escapeHtml(tsunamiStatus)}</div>`);
     if (quakesStatus) statusLines.push(`<div class="item" style="color:#ffaa00;">${escapeHtml(quakesStatus)}</div>`);
+    if (!tsunamiStatus && tsunamiItems.length === 0) {
+        statusLines.push('<div class="item" style="font-size:10px;font-weight:700;color:#7be495;background:rgba(104,255,176,0.12);border:1px solid rgba(104,255,176,0.35);border-radius:6px;padding:4px 6px;">No Tsunami Alerts</div>');
+    }
 
     const tsunamiPrimary = tsunamiItems.slice(0, 2);
-    const quakePrimary = quakesItems.slice(0, 3);
+    const quakePrimary = quakesItems.slice(0, 5);
 
     const tsunamiHeader = tsunamiPrimary.length > 0 ? `<div class="item" style="font-size:10px;opacity:0.75;color:#ff8a8a;">Tsunami (Critical)</div>` : "";
     const quakeHeader = quakePrimary.length > 0 ? `<div class="item" style="font-size:10px;opacity:0.75;color:#9fe7dd;">Earthquakes</div>` : "";
@@ -2462,6 +3081,11 @@ async function loadSchumann() {
         schumannCorrelationState.sriValue = responseValue;
         schumannCorrelationState.sriObservedAt = String(observedAt);
         schumannCorrelationState.sriObservedAtMs = parseTimeMs(observedAt);
+        registerSriSpikeIfNeeded(responseValue, schumannCorrelationState.sriObservedAtMs || Date.now(), {
+            kp: data?.components?.kp?.raw,
+            plasma: data?.components?.plasma_density?.raw,
+            xray: data?.components?.xray_flux?.raw
+        });
         const highThreshold = toNumber(APP_CONFIG?.schumann?.highSRIThreshold, DEFAULT_APP_CONFIG.schumann.highSRIThreshold) || 40;
         if (responseValue > highThreshold) {
             schumannCorrelationState.lastHighEventValue = responseValue;
@@ -2607,7 +3231,7 @@ async function loadTsunami() {
 async function loadVolcano() {
     const el = document.getElementById("volcano");
     try {
-        const data = await fetchJson("https://eonet.gsfc.nasa.gov/api/v3/events?category=volcanoes", { timeoutMs: 8000, retries: 1 });
+        const data = await fetchJson("https://eonet.gsfc.nasa.gov/api/v3/events?category=volcanoes&limit=50", { timeoutMs: 8000, retries: 1 });
         const events = Array.isArray(data?.events) ? data.events : [];
 
         if (events.length === 0) {
@@ -2617,7 +3241,12 @@ async function loadVolcano() {
         }
 
         markHealth("volcano", "ok");
-        setWidgetHtml(el, "volcano", events.slice(0, 4).map((v) => {
+        const visibleEvents = events.slice(0, 5);
+        const overflowHtml = events.length > visibleEvents.length
+            ? `<div class="item" style="font-size:10px;opacity:0.72;color:#9fc5e8;">+${events.length - visibleEvents.length} more volcano events</div>`
+            : "";
+
+        setWidgetHtml(el, "volcano", `${visibleEvents.map((v) => {
             const geometries = Array.isArray(v?.geometry) ? v.geometry : [];
             const latest = geometries.length > 0 ? geometries[geometries.length - 1] : null;
             const first = geometries.length > 0 ? geometries[0] : null;
@@ -2642,7 +3271,7 @@ async function loadVolcano() {
                     <div class="neo-meta"><a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" style="color:#9fc5e8;text-decoration:none;">Source</a></div>
                 </div>
             `;
-        }).join(""));
+        }).join("")}${overflowHtml}`);
 
     } catch (err) {
         console.error("Volcano error:", err);
@@ -2731,30 +3360,35 @@ async function loadNEOs() {
 async function loadAlerts() {
     const el = document.getElementById("alerts");
     try {
-        const data = await fetchJson("https://api.weather.gov/alerts/active?area=TX", { timeoutMs: 8000, retries: 1 });
+        const data = await fetchJson(apiUrl("/weather-alerts?area=TX"), {
+            timeoutMs: 8000,
+            retries: 1,
+            cache: "no-store"
+        });
         const features = Array.isArray(data?.features) ? data.features : [];
         const ranked = sortNwsAlerts(features);
         const displayAlerts = alertsCriticalOnly ? ranked.filter(isCriticalAlert) : ranked;
+        const statusLine = alertFeedStatusLine(data);
 
         if (displayAlerts.length === 0) {
             if (ranked.length > 0 && alertsCriticalOnly) {
                 markHealth("alerts", "degraded", "Critical-only mode: no critical alerts");
-                setWidgetHtml(el, "alerts", "No critical TX alerts");
+                setWidgetHtml(el, "alerts", `<div class="item">No critical TX alerts</div>${statusLine}`);
             } else {
                 markHealth("alerts", "degraded", "No active alerts");
-                setWidgetHtml(el, "alerts", "No active TX alerts");
+                setWidgetHtml(el, "alerts", `<div class="item">No active TX alerts</div>${statusLine}`);
             }
             return;
         }
 
         markHealth("alerts", "ok", alertsCriticalOnly ? "Critical-only mode" : "All alerts mode");
-        setWidgetHtml(el, "alerts", displayAlerts.slice(0,7).map(a =>
+        setWidgetHtml(el, "alerts", `${displayAlerts.slice(0,7).map(a =>
             `<div class="item">
             <a href="${safeHref(a?.id)}" target="_blank" rel="noopener noreferrer" style="color:#ffaa00; text-decoration:none;">
             ${escapeHtml(a?.properties?.event ?? "Weather Alert")} <br>
             <span style="font-size: 10px; color: #cccccc; font-weight: normal;">${escapeHtml(a?.properties?.areaDesc ?? "Unknown area")}</span>
             </a></div>`
-        ).join(""));
+        ).join("")}${statusLine}`);
 
     } catch (err) {
         console.error("TX alerts error:", err);
@@ -2771,20 +3405,24 @@ async function loadWeather() {
     const locationLabel = APP_CONFIG.location.label;
 
     try {
-        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,uv_index,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,weather_code,is_day&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,uv_index,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
         const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`;
-        const localAlertsUrl = `https://api.weather.gov/alerts/active?point=${lat},${lon}`;
+        const localAlertsUrl = apiUrl(`/weather-alerts?point=${encodeURIComponent(`${lat},${lon}`)}`);
+        const currentSkyUrl = apiUrl(`/weather-current?point=${encodeURIComponent(`${lat},${lon}`)}`);
 
-        const [weatherRes, airRes, localAlertsRes] = await Promise.all([
-            fetchJson(weatherUrl, { timeoutMs: 8000, retries: 2 }),
-            fetchJson(airUrl, { timeoutMs: 8000, retries: 1 }).catch(() => ({ current: { us_aqi: null } })),
+        const [weatherRes, airRes, localAlertsRes, currentSkyRes] = await Promise.all([
+            fetchJson(weatherUrl, { timeoutMs: 8000, retries: 2, cache: "no-store" }),
+            fetchJson(airUrl, { timeoutMs: 8000, retries: 1, cache: "no-store" }).catch(() => ({ current: { us_aqi: null } })),
             fetchJson(localAlertsUrl, {
                 timeoutMs: 8000,
                 retries: 1,
-                headers: {
-                    "Accept": "application/geo+json,application/json"
-                }
-            }).catch(() => ({ features: [] }))
+                cache: "no-store"
+            }).catch(() => ({ features: [] })),
+            fetchJson(currentSkyUrl, {
+                timeoutMs: 8000,
+                retries: 1,
+                cache: "no-store"
+            }).catch(() => ({ text: null }))
         ]);
 
         let cur = weatherRes.current;
@@ -2817,38 +3455,26 @@ async function loadWeather() {
         const forecastMin = toNumber(weatherRes?.daily?.temperature_2m_min?.[0], null);
         const forecastPrecip = toNumber(weatherRes?.daily?.precipitation_probability_max?.[0], precipChance);
         const forecastCode = toNumber(weatherRes?.daily?.weather_code?.[0], null);
-
-        const weatherCodeMap = {
-            0: "Clear",
-            1: "Mostly clear",
-            2: "Partly cloudy",
-            3: "Overcast",
-            45: "Fog",
-            48: "Rime fog",
-            51: "Light drizzle",
-            53: "Drizzle",
-            55: "Dense drizzle",
-            56: "Freezing drizzle",
-            57: "Dense freezing drizzle",
-            61: "Light rain",
-            63: "Rain",
-            65: "Heavy rain",
-            66: "Freezing rain",
-            67: "Heavy freezing rain",
-            71: "Light snow",
-            73: "Snow",
-            75: "Heavy snow",
-            77: "Snow grains",
-            80: "Rain showers",
-            81: "Heavy showers",
-            82: "Violent showers",
-            85: "Snow showers",
-            86: "Heavy snow showers",
-            95: "Thunderstorm",
-            96: "Thunderstorm w/ hail",
-            99: "Severe thunderstorm w/ hail"
-        };
-        const forecastLabel = weatherCodeMap[forecastCode] || "Mixed conditions";
+        const currentSkySource = normalizeAlertValue(currentSkyRes?.source);
+        const nwsSkyLabel = (currentSkyRes?.text || "").trim();
+        const currentSkyTs = parseTimeMs(currentSkyRes?.timestamp);
+        const nwsTodayShort = (currentSkyRes?.today_short || "").trim();
+        const nwsTodayDetailed = (currentSkyRes?.today_detailed || "").trim();
+        const currentConditionsLabel = nwsSkyLabel || weatherConditionLabel(cur.weather_code ?? forecastCode, cur.is_day);
+        const forecastLabel = weatherConditionLabel(forecastCode);
+        const currentSourceLabel = nwsSkyLabel
+            ? ({
+                nws: "NWS observation",
+                cache: "NWS observation (cache)",
+                "cache-stale": "NWS observation (stale cache)",
+                "nws-unavailable": "NWS unavailable"
+            }[currentSkySource] || "NWS observation")
+            : "Open-Meteo fallback";
+        const currentSourceTimeLabel = currentSkyTs
+            ? new Date(currentSkyTs).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+            : nowLabel();
+        const weatherTodayLabel = nwsTodayDetailed || nwsTodayShort || forecastLabel;
+        const usingOpenMeteoTodayFallback = !nwsTodayDetailed && !nwsTodayShort;
 
         const localFeatures = sortNwsAlerts(Array.isArray(localAlertsRes?.features) ? localAlertsRes.features : []);
         const localAlerts = localFeatures.slice(0, 3);
@@ -2859,7 +3485,9 @@ async function loadWeather() {
                 ? "SEVERE LOCAL ALERT ACTIVE"
                 : `${localAlerts.length} local alert${localAlerts.length > 1 ? "s" : ""}`;
 
-        markHealth("weather", severeLocal ? "degraded" : "ok", severeLocal ? "Severe local alert" : "Local conditions normal");
+        const weatherHealthLocal = severeLocal ? "Severe local alert" : "Local conditions normal";
+        const weatherHealthDetail = `Sky src: ${currentSourceLabel} ${currentSourceTimeLabel} | ${weatherHealthLocal}`;
+        markHealth("weather", severeLocal ? "degraded" : "ok", weatherHealthDetail);
         setWidgetHtml(el, "weather", `
             <div class="weather-layout">
                 <div class="weather-main">
@@ -2873,10 +3501,13 @@ async function loadWeather() {
                     </div>
                 </div>
                 <div class="weather-side">
-                    <div class="weather-side-title">Current Forecast</div>
-                    <div class="item">${escapeHtml(forecastLabel)}</div>
-                    <div class="item" style="font-size:10px;opacity:0.85;">High: ${forecastMax !== null ? `${forecastMax.toFixed(0)}°F` : "N/A"} | Low: ${forecastMin !== null ? `${forecastMin.toFixed(0)}°F` : "N/A"}</div>
-                    <div class="item" style="font-size:10px;opacity:0.85;">Rain chance: ${forecastPrecip !== null ? `${Math.round(forecastPrecip)}%` : "N/A"}</div>
+                    <div class="weather-side-title">Current Sky / Today</div>
+                    <div class="item">${escapeHtml(currentConditionsLabel)}</div>
+                    <div class="item" style="font-size:10px;opacity:0.85;">Today: ${escapeHtml(weatherTodayLabel)}${usingOpenMeteoTodayFallback ? ' <span style="font-size:9px;opacity:0.8;color:#ffcc80;border:1px solid rgba(255,204,128,0.35);border-radius:999px;padding:1px 6px;">Open-Meteo fallback</span>' : ''}</div>
+                    ${nwsTodayDetailed
+                        ? ""
+                        : `<div class="item" style="font-size:10px;opacity:0.85;">High: ${forecastMax !== null ? `${forecastMax.toFixed(0)}°F` : "N/A"} | Low: ${forecastMin !== null ? `${forecastMin.toFixed(0)}°F` : "N/A"}</div>
+                           <div class="item" style="font-size:10px;opacity:0.85;">Rain chance: ${forecastPrecip !== null ? `${Math.round(forecastPrecip)}%` : "N/A"}</div>`}
                     <div class="weather-side-title" style="margin-top:8px;">Current Local Weather Alerts</div>
                     <div class="weather-alert-bar ${severeLocal ? "severe" : ""}">${escapeHtml(localAlertBar)}</div>
                     ${localAlerts.length === 0
@@ -3058,9 +3689,9 @@ const ADAPTIVE_POLLS = {
     schumann: { base: SCHUMANN_INTERVAL_MS, retry: 15000, max: 240000 },
     schumann_elf: { base: 300000, retry: 60000, max: 900000 },
     volcano: { base: 300000, retry: 60000, max: 900000 },
-    alerts: { base: 300000, retry: 60000, max: 900000 },
+    alerts: { base: 60000, retry: 30000, max: 300000 },
     neos: { base: 3600000, retry: 180000, max: 3600000 },
-    weather: { base: 600000, retry: 120000, max: 1800000 },
+    weather: { base: 60000, retry: 30000, max: 300000 },
     radar: { base: 300000, retry: 60000, max: 900000 }
 };
 
