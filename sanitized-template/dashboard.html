@@ -849,6 +849,24 @@ canvas {
     color: #ffd4d4;
 }
 
+.schumann-chip-response {
+    background: rgba(98,255,169,0.2);
+    border-color: rgba(98,255,169,0.62);
+    color: #a6ffd0;
+}
+
+.schumann-chip-noresponse {
+    background: rgba(255,138,138,0.18);
+    border-color: rgba(255,138,138,0.62);
+    color: #ffd1d1;
+}
+
+.schumann-chip-false {
+    background: rgba(255,209,102,0.18);
+    border-color: rgba(255,209,102,0.62);
+    color: #ffe3a6;
+}
+
 .schumann-kpi {
     font-weight: 700;
     color: #91f7ff;
@@ -913,6 +931,56 @@ canvas {
 
 .schumann-delta-alert {
     color: #ffd166;
+}
+
+.schumann-alert-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 3px 9px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.4s, border-color 0.4s, color 0.4s;
+}
+
+.schumann-alert-chip::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: currentColor;
+    opacity: 0.85;
+}
+
+.schumann-alert-baseline {
+    color: #7be495;
+    background: rgba(123,228,149,0.12);
+    border-color: rgba(123,228,149,0.32);
+}
+
+.schumann-alert-elevated {
+    color: #ffd166;
+    background: rgba(255,209,102,0.12);
+    border-color: rgba(255,209,102,0.35);
+}
+
+.schumann-alert-active {
+    color: #ff9d9d;
+    background: rgba(255,80,80,0.14);
+    border-color: rgba(255,100,100,0.4);
+    animation: chip-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes chip-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.62; }
 }
 
 .schumann-event-marker {
@@ -1019,25 +1087,33 @@ canvas {
     100% { background: rgba(255,0,0,0.2); }
 }
 
-#refreshBtn {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index: 999;
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.2);
-    color: #00ffcc;
-    font-size: 16px;
-    padding: 6px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    backdrop-filter: blur(3px);
-    transition: all 0.2s ease;
+.radar-health-bar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
 }
 
-#refreshBtn:hover {
-    background: rgba(0,255,204,0.2);
-    transform: scale(1.1);
+.radar-refresh-btn {
+    border: 1px solid rgba(0,255,204,0.45);
+    background: rgba(0,0,0,0.5);
+    color: #00ffcc;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 4px;
+    width: 26px;
+    height: 22px;
+    padding: 0;
+    cursor: pointer;
+    white-space: nowrap;
+    align-self: flex-end;
+    margin-bottom: 2px;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.radar-refresh-btn:hover {
+    background: rgba(0,255,204,0.18);
+    transform: translateY(-1px);
 }
 
 .hb-dot {
@@ -1059,8 +1135,6 @@ canvas {
 <body>
 
 <div id="bg"></div>
-
-<button id="refreshBtn" title="Refresh Data">⟳</button>
 
 <div class="grid">
 
@@ -1093,7 +1167,10 @@ canvas {
 
 <div class="panel panel-schumann">
 <div class="section-kicker-row"><div class="section-kicker">Space Weather</div><div class="section-role">Response</div></div>
+<div class="title-row">
 <div class="title"><span class="hb-dot unknown" id="led-schumann" title="SCH"></span>📡 Schumann Monitor</div>
+<span id="schumannAlertChip" class="schumann-alert-chip schumann-alert-baseline" aria-live="polite" title="Correlation alert level">Baseline</span>
+</div>
 <div class="desc">Driver + effect view: SRI forcing proxy and observed ELF spectrogram.</div>
 <div class="widget-scroll">
 <div style="font-size:10px;opacity:0.75;margin:6px 0;display:flex;gap:12px;flex-wrap:wrap;">
@@ -1167,7 +1244,10 @@ canvas {
             <div id="radarFrontsMap" class="radar-fronts-map" aria-hidden="true"></div>
         </div>
     </div>
-    <div id="radarMeta" class="radar-meta">Loading radar snapshot...</div>
+    <div class="radar-health-bar">
+        <div id="radarMeta" class="radar-meta">Loading radar snapshot...</div>
+        <button id="refreshBtn" class="radar-refresh-btn" type="button" title="Click: refresh data | Shift-click: hard reload" aria-label="Refresh data. Shift-click for hard reload.">⟳</button>
+    </div>
 </div>
 </div>
 
@@ -1323,7 +1403,18 @@ const correlationEngineState = {
         falsePositives: 0,
         persisted: 0
     },
-    lastSummary: "Correlation idle"
+    lastSummary: "Correlation idle",
+    lastOutcomeStatus: "none",
+    lastOutcomeLagMinutes: null,
+    lastOutcomeAtMs: 0,
+    lastOutcomeMessage: "Awaiting resolved events"
+};
+const spectrogramWorkerState = {
+    worker: null,
+    pending: new Map(),
+    seq: 0,
+    unsupported: false,
+    warnedFallback: false
 };
 
 try {
@@ -1626,6 +1717,144 @@ function queueCorrelationSummary() {
     const s = correlationEngineState.stats;
     const open = correlationEngineState.pendingSpikes.length;
     correlationEngineState.lastSummary = `Correlation: Spikes ${s.spikes} | Confirmed ${s.responses} | Missed ${s.noResponses} | False positives ${s.falsePositives} | Open windows ${open}`;
+    updateSchumannAlertChip(24);
+}
+
+function updateLatestCorrelationOutcome(event) {
+    if (!event || typeof event !== "object") return;
+
+    const status = String(event.status || "").trim().toLowerCase();
+    if (!status) return;
+
+    const tsMs = parseTimeMs(event.timestamp) || Date.now();
+    if (status === "response-detected") {
+        const lag = toNumber(event.lag_minutes, null);
+        correlationEngineState.lastOutcomeStatus = "response-detected";
+        correlationEngineState.lastOutcomeLagMinutes = lag;
+        correlationEngineState.lastOutcomeAtMs = tsMs;
+        correlationEngineState.lastOutcomeMessage = Number.isFinite(lag)
+            ? `Response detected (lag: ${Math.max(0, Math.round(lag))} min)`
+            : "Response detected";
+        return;
+    }
+
+    if (status === "no-response") {
+        correlationEngineState.lastOutcomeStatus = "no-response";
+        correlationEngineState.lastOutcomeLagMinutes = null;
+        correlationEngineState.lastOutcomeAtMs = tsMs;
+        correlationEngineState.lastOutcomeMessage = "No response detected";
+        return;
+    }
+
+    if (status === "false-positive") {
+        correlationEngineState.lastOutcomeStatus = "false-positive";
+        correlationEngineState.lastOutcomeLagMinutes = null;
+        correlationEngineState.lastOutcomeAtMs = tsMs;
+        correlationEngineState.lastOutcomeMessage = "Effect spike without SRI trigger";
+    }
+}
+
+function getSchumannChartMarkers(windowHours = TREND_WINDOW_HOURS) {
+    const nowMs = Date.now();
+    const minMs = nowMs - Math.max(1, windowHours) * 3600000;
+    const markers = [];
+
+    correlationEngineState.pendingSpikes.forEach((pending) => {
+        const ts = toNumber(pending?.startMs, 0);
+        if (!ts || ts < minMs) return;
+        markers.push({
+            ts,
+            label: "Spike",
+            shortLabel: "S",
+            color: "rgba(255,209,102,0.9)"
+        });
+    });
+
+    correlationEngineState.events.forEach((event) => {
+        const status = String(event?.status || "").trim().toLowerCase();
+        const ts = parseTimeMs(event?.timestamp);
+        if (!ts || ts < minMs) return;
+
+        if (status === "response-detected") {
+            markers.push({
+                ts,
+                label: "Response",
+                shortLabel: "R",
+                color: "rgba(98,255,169,0.9)"
+            });
+            return;
+        }
+
+        if (status === "no-response") {
+            markers.push({
+                ts,
+                label: "No response",
+                shortLabel: "N",
+                color: "rgba(255,138,138,0.9)"
+            });
+        }
+    });
+
+    markers.sort((a, b) => a.ts - b.ts);
+    if (markers.length > 32) {
+        return markers.slice(markers.length - 32);
+    }
+    return markers;
+}
+
+function filterEventsByTime(events, hours = 24) {
+    if (!Array.isArray(events) || events.length === 0) return [];
+    const safeHours = Math.max(1, toNumber(hours, 24) || 24);
+    const cutoff = Date.now() - safeHours * 3600000;
+    return events.filter((event) => parseTimeMs(event?.timestamp) >= cutoff);
+}
+
+// Alert level: "active" (pending spike in window), "elevated" (resolved events in 24h), "baseline" (quiet)
+function computeSchumannAlertLevel(hours = 24) {
+    const pending = correlationEngineState.pendingSpikes;
+    if (Array.isArray(pending) && pending.length > 0) {
+        return "active";
+    }
+    const recent = filterEventsByTime(correlationEngineState.events, hours);
+    const safeHours = Math.max(1, toNumber(hours, 24) || 24);
+    const cutoff = Date.now() - safeHours * 3600000;
+    const recentPending = Array.isArray(pending)
+        ? pending.filter((p) => toNumber(p?.startMs, 0) >= cutoff)
+        : [];
+    let hasSpike = recentPending.length > 0;
+    if (!hasSpike) {
+        hasSpike = recent.some((e) => {
+            const s = String(e?.status || "").trim().toLowerCase();
+            return s === "response-detected" || s === "no-response";
+        });
+    }
+    const hasFalsePositive = recent.some((e) =>
+        String(e?.status || "").trim().toLowerCase() === "false-positive"
+    );
+    if (hasSpike || hasFalsePositive) return "elevated";
+    return "baseline";
+}
+
+function updateSchumannAlertChip(hours = 24) {
+    const chip = document.getElementById("schumannAlertChip");
+    if (!chip) return;
+    const level = computeSchumannAlertLevel(hours);
+    const labelMap = { active: "Active Event", elevated: "Elevated", baseline: "Baseline" };
+    const classMap = {
+        active: "schumann-alert-active",
+        elevated: "schumann-alert-elevated",
+        baseline: "schumann-alert-baseline"
+    };
+    const nextLabel = labelMap[level] || "Baseline";
+    const nextClass = classMap[level] || "schumann-alert-baseline";
+    chip.classList.remove("schumann-alert-active", "schumann-alert-elevated", "schumann-alert-baseline");
+    chip.classList.add(nextClass);
+    if (chip.textContent !== nextLabel) chip.textContent = nextLabel;
+    chip.title = level === "active"
+        ? `Active Event — spike being tracked (${correlationEngineState.pendingSpikes.length} pending)`
+        : level === "elevated"
+        ? `Elevated — correlation events detected in last ${Math.max(1, toNumber(hours, 24) || 24)}h`
+        : "Baseline — no correlation events detected";
 }
 
 function openCorrelationDb() {
@@ -1684,6 +1913,7 @@ function recordCorrelationEvent(event) {
     if (correlationEngineState.events.length > 250) {
         correlationEngineState.events.splice(0, correlationEngineState.events.length - 250);
     }
+    updateLatestCorrelationOutcome(event);
     queueCorrelationSummary();
 
     // Fire and forget persistence so UI remains responsive.
@@ -2240,6 +2470,15 @@ function renderSchumannSpectrogramStatus(message = "", level = "ok") {
         : "<span class=\"schumann-row-label\">Band 7-9:</span> n/a";
     const correlationPills = buildCorrelationPillsHtml();
     const correlationMarker = correlationEngineState.lastSummary || "Correlation idle";
+    const outcomeStatus = correlationEngineState.lastOutcomeStatus;
+    const outcomeMessage = correlationEngineState.lastOutcomeMessage || "Awaiting resolved events";
+    let outcomeClass = "";
+    if (outcomeStatus === "response-detected") outcomeClass = "schumann-chip-response";
+    if (outcomeStatus === "no-response") outcomeClass = "schumann-chip-noresponse";
+    if (outcomeStatus === "false-positive") outcomeClass = "schumann-chip-false";
+    const outcomeTsLabel = correlationEngineState.lastOutcomeAtMs
+        ? new Date(correlationEngineState.lastOutcomeAtMs).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+        : "n/a";
     const driftText = deltaText.replace("Delta:", "Drift:");
 
     statusEl.innerHTML = `
@@ -2252,8 +2491,10 @@ function renderSchumannSpectrogramStatus(message = "", level = "ok") {
                 ${highMarker}
             </div>
             <div class="schumann-status-row compact">${bandMarker}<span class="schumann-row-sep">|</span>${correlationPills || escapeHtml(correlationMarker)}</div>
+            <div class="schumann-status-row compact"><span class="schumann-chip ${outcomeClass}">${escapeHtml(outcomeMessage)}</span><span class="schumann-chip">Last event ${escapeHtml(outcomeTsLabel)}</span></div>
         </div>
     `;
+    updateSchumannAlertChip(24);
 }
 
 async function runStartupChecks() {
@@ -2338,44 +2579,253 @@ function analyzeSpectrogram(imageData) {
     return extractBandIntensity(imageData, getSchumannAnalysisConfig().bandRangeHz, getSpectrogramFrequencyScale());
 }
 
+function buildSpectrogramWorkerScript() {
+    return `
+        function toNumber(value, fallback = 0) {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function extractBandIntensity(imageData, bandRangeHz, analysis) {
+            if (!imageData || !imageData.data) return null;
+            const data = imageData.data;
+            const width = imageData.width;
+            const height = imageData.height;
+            if (!width || !height || !data.length) return null;
+
+            const minHz = toNumber((bandRangeHz || [])[0], NaN);
+            const maxHz = toNumber((bandRangeHz || [])[1], NaN);
+            if (!Number.isFinite(minHz) || !Number.isFinite(maxHz) || minHz >= maxHz) return null;
+
+            const left = Math.max(0, Math.min(width - 1, Math.floor(width * clamp(toNumber(analysis.plotLeftRatio, 0.039), 0, 0.4))));
+            const right = Math.max(left + 1, Math.min(width, Math.ceil(width * clamp(toNumber(analysis.plotRightRatio, 0.81), 0.5, 1))));
+            const top = Math.max(0, Math.min(height - 1, Math.floor(height * clamp(toNumber(analysis.plotTopRatio, 0.072), 0, 0.4))));
+            const bottom = Math.max(top + 1, Math.min(height, Math.ceil(height * clamp(toNumber(analysis.plotBottomRatio, 0.935), 0.6, 1))));
+
+            const topHz = toNumber(analysis.spectrogramTopHz, 40);
+            const bottomHz = toNumber(analysis.spectrogramBottomHz, 0);
+            const maxPlotHz = Math.max(topHz, bottomHz + 1);
+            const minPlotHz = Math.min(bottomHz, maxPlotHz - 1);
+
+            let bandSum = 0;
+            let bandCount = 0;
+            let plotSum = 0;
+            let plotCount = 0;
+
+            for (let y = top; y < bottom; y++) {
+                const ratio = clamp((y - top) / Math.max(1, bottom - top - 1), 0, 1);
+                const hz = maxPlotHz - (maxPlotHz - minPlotHz) * ratio;
+
+                for (let x = left; x < right; x++) {
+                    const idx = (y * width + x) * 4;
+                    const r = data[idx];
+                    const g = data[idx + 1];
+                    const b = data[idx + 2];
+                    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                    plotSum += luminance;
+                    plotCount += 1;
+
+                    if (hz >= minHz && hz <= maxHz) {
+                        bandSum += luminance;
+                        bandCount += 1;
+                    }
+                }
+            }
+
+            if (!bandCount || !plotCount) return null;
+            const bandAvg = bandSum / bandCount;
+            const plotAvg = plotSum / plotCount;
+            const normalized = clamp(bandAvg / 255, 0, 1);
+            const contrastBoost = clamp((bandAvg - plotAvg) / 255, -1, 1);
+            return clamp(normalized + Math.max(0, contrastBoost) * 0.35, 0, 1);
+        }
+
+        self.onmessage = async (event) => {
+            const payload = event && event.data ? event.data : {};
+            const id = payload.id;
+            const imageUrl = String(payload.imageUrl || "");
+            const analysis = payload.analysis || {};
+
+            try {
+                if (!imageUrl) {
+                    throw new Error("Missing image URL");
+                }
+                if (typeof OffscreenCanvas === "undefined" || typeof createImageBitmap !== "function") {
+                    throw new Error("Worker canvas decode unavailable");
+                }
+
+                const response = await fetch(imageUrl, { cache: "no-store" });
+                if (!response.ok) {
+                    throw new Error("HTTP " + response.status);
+                }
+                const blob = await response.blob();
+                const bitmap = await createImageBitmap(blob);
+                const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+                const ctx = canvas.getContext("2d", { willReadFrequently: true });
+                if (!ctx) {
+                    throw new Error("Worker canvas context unavailable");
+                }
+
+                ctx.drawImage(bitmap, 0, 0, bitmap.width, bitmap.height);
+                if (typeof bitmap.close === "function") {
+                    bitmap.close();
+                }
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const intensity = extractBandIntensity(imageData, [analysis.bandMinHz, analysis.bandMaxHz], analysis);
+                self.postMessage({ id, intensity });
+            } catch (err) {
+                const message = err && err.message ? err.message : "worker extraction failed";
+                self.postMessage({ id, error: message });
+            }
+        };
+    `;
+}
+
+function getSpectrogramAnalysisPayload() {
+    const cfg = getSchumannAnalysisConfig();
+    return {
+        bandMinHz: toNumber(cfg.bandRangeHz?.[0], 7),
+        bandMaxHz: toNumber(cfg.bandRangeHz?.[1], 9),
+        spectrogramTopHz: toNumber(cfg.spectrogramTopHz, 40),
+        spectrogramBottomHz: toNumber(cfg.spectrogramBottomHz, 0),
+        plotLeftRatio: toNumber(cfg.plotLeftRatio, 0.039),
+        plotRightRatio: toNumber(cfg.plotRightRatio, 0.81),
+        plotTopRatio: toNumber(cfg.plotTopRatio, 0.072),
+        plotBottomRatio: toNumber(cfg.plotBottomRatio, 0.935)
+    };
+}
+
+function getSpectrogramWorker() {
+    if (spectrogramWorkerState.unsupported) return null;
+    if (spectrogramWorkerState.worker) return spectrogramWorkerState.worker;
+    if (typeof Worker !== "function" || typeof Blob === "undefined" || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+        spectrogramWorkerState.unsupported = true;
+        return null;
+    }
+
+    try {
+        const blob = new Blob([buildSpectrogramWorkerScript()], { type: "text/javascript" });
+        const workerUrl = URL.createObjectURL(blob);
+        const worker = new Worker(workerUrl);
+        URL.revokeObjectURL(workerUrl);
+
+        worker.onmessage = (event) => {
+            const payload = event && event.data ? event.data : {};
+            const id = toNumber(payload.id, 0);
+            if (!id || !spectrogramWorkerState.pending.has(id)) return;
+
+            const pending = spectrogramWorkerState.pending.get(id);
+            spectrogramWorkerState.pending.delete(id);
+            if (pending?.timer) {
+                clearTimeout(pending.timer);
+            }
+
+            if (Number.isFinite(payload.intensity)) {
+                pending.resolve(payload.intensity);
+                return;
+            }
+            pending.resolve(null);
+        };
+
+        worker.onerror = () => {
+            spectrogramWorkerState.unsupported = true;
+            if (spectrogramWorkerState.worker) {
+                spectrogramWorkerState.worker.terminate();
+            }
+            spectrogramWorkerState.worker = null;
+            for (const pending of spectrogramWorkerState.pending.values()) {
+                if (pending?.timer) {
+                    clearTimeout(pending.timer);
+                }
+                pending.resolve(null);
+            }
+            spectrogramWorkerState.pending.clear();
+        };
+
+        spectrogramWorkerState.worker = worker;
+        return worker;
+    } catch (_) {
+        spectrogramWorkerState.unsupported = true;
+        return null;
+    }
+}
+
+async function extractSpectrogramIntensityViaWorker(imageUrl) {
+    const worker = getSpectrogramWorker();
+    if (!worker) return null;
+
+    const id = ++spectrogramWorkerState.seq;
+    return await new Promise((resolve) => {
+        const timer = setTimeout(() => {
+            spectrogramWorkerState.pending.delete(id);
+            resolve(null);
+        }, 12000);
+
+        spectrogramWorkerState.pending.set(id, { resolve, timer });
+        worker.postMessage({
+            id,
+            imageUrl,
+            analysis: getSpectrogramAnalysisPayload()
+        });
+    });
+}
+
+async function extractSpectrogramIntensityOnMainThread(imageUrl) {
+    const response = await fetch(imageUrl, { cache: "no-store" });
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+    const blob = await response.blob();
+
+    let bitmap = null;
+    if (typeof createImageBitmap === "function") {
+        bitmap = await createImageBitmap(blob);
+    }
+
+    const width = bitmap ? bitmap.width : 0;
+    const height = bitmap ? bitmap.height : 0;
+    if (!width || !height) return null;
+
+    let canvas;
+    let ctx;
+    if (typeof OffscreenCanvas !== "undefined") {
+        canvas = new OffscreenCanvas(width, height);
+        ctx = canvas.getContext("2d", { willReadFrequently: true });
+    } else {
+        canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        ctx = canvas.getContext("2d", { willReadFrequently: true });
+    }
+
+    if (!ctx) return null;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    const imageData = ctx.getImageData(0, 0, width, height);
+    if (bitmap && typeof bitmap.close === "function") {
+        bitmap.close();
+    }
+
+    const extracted = analyzeSpectrogram(imageData);
+    return Number.isFinite(extracted) ? extracted : null;
+}
+
 async function extractSpectrogramIntensityFromUrl(imageUrl) {
     try {
-        const response = await fetch(imageUrl, { cache: "no-store" });
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        const blob = await response.blob();
-
-        let bitmap = null;
-        if (typeof createImageBitmap === "function") {
-            bitmap = await createImageBitmap(blob);
+        const workerExtracted = await extractSpectrogramIntensityViaWorker(imageUrl);
+        if (Number.isFinite(workerExtracted)) {
+            return workerExtracted;
         }
 
-        const width = bitmap ? bitmap.width : 0;
-        const height = bitmap ? bitmap.height : 0;
-        if (!width || !height) return null;
-
-        let canvas;
-        let ctx;
-        if (typeof OffscreenCanvas !== "undefined") {
-            canvas = new OffscreenCanvas(width, height);
-            ctx = canvas.getContext("2d", { willReadFrequently: true });
-        } else {
-            canvas = document.createElement("canvas");
-            canvas.width = width;
-            canvas.height = height;
-            ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!spectrogramWorkerState.warnedFallback) {
+            spectrogramWorkerState.warnedFallback = true;
+            console.info("Spectrogram worker unavailable; using main-thread extraction fallback.");
         }
-
-        if (!ctx) return null;
-        ctx.drawImage(bitmap, 0, 0, width, height);
-        const imageData = ctx.getImageData(0, 0, width, height);
-        if (bitmap && typeof bitmap.close === "function") {
-            bitmap.close();
-        }
-
-        const extracted = analyzeSpectrogram(imageData);
-        return Number.isFinite(extracted) ? extracted : null;
+        return await extractSpectrogramIntensityOnMainThread(imageUrl);
     } catch (err) {
         console.warn("Spectrogram extraction skipped:", err?.message || err);
         return null;
@@ -3476,6 +3926,7 @@ async function loadSchumann() {
         drawChart("schumannChart", schumannHistory, schChartMax, {
             strokeColor: color,
             windowHours: TREND_WINDOW_HOURS,
+            markers: getSchumannChartMarkers(TREND_WINDOW_HOURS),
             xTicks: [
                 { ratio: 0, label: "-12h", align: "left", offset: 2 },
                 { ratio: 0.5, label: "-6h", align: "center", offset: 0 },
@@ -4004,6 +4455,45 @@ function drawChart(id, data, maxVal, options = {}) {
     });
     ctx.textAlign = "start";
 
+    const markers = Array.isArray(options.markers) ? options.markers : [];
+    if (markers.length) {
+        const markerFont = overlayMode ? "8px Arial" : "9px Arial";
+        ctx.font = markerFont;
+        markers.forEach((marker) => {
+            const markerTs = parseTimeMs(marker?.ts);
+            if (!markerTs || markerTs < minTs || markerTs > maxTs) return;
+
+            const xRatio = Math.max(0, Math.min(1, (markerTs - minTs) / span));
+            const x = padL + xRatio * plotW;
+            const color = String(marker?.color || "rgba(255,209,102,0.9)");
+            const shortLabel = String(marker?.shortLabel || "S").slice(0, 1).toUpperCase();
+
+            ctx.save();
+            ctx.setLineDash([3, 3]);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x, padT);
+            ctx.lineTo(x, padT + plotH);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x, padT - 1);
+            ctx.lineTo(x - 4, padT + 5);
+            ctx.lineTo(x + 4, padT + 5);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = "rgba(240,248,255,0.92)";
+            ctx.textAlign = "center";
+            ctx.fillText(shortLabel, x, padT + 14);
+            ctx.textAlign = "start";
+        });
+        ctx.font = "10px Arial";
+    }
+
     ctx.beginPath();
     chartPoints.forEach((point, i) => {
         const xRatio = Math.max(0, Math.min(1, (point.ts - minTs) / span));
@@ -4099,7 +4589,9 @@ function manualRefresh() {
 // Button hook
 document.getElementById("refreshBtn").addEventListener("click", (e) => {
     if (e.shiftKey) {
-        location.reload(); // HARD reload if Shift is held
+        const hardReloadUrl = new URL(window.location.href);
+        hardReloadUrl.searchParams.set("_hardReload", String(Date.now()));
+        window.location.replace(hardReloadUrl.toString());
     } else {
         manualRefresh(); // Soft refresh
     }
