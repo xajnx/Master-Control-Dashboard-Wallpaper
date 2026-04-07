@@ -30,10 +30,10 @@ body {
 .grid {
     display: grid;
     grid-template-columns: 0.95fr 1.1fr 1.35fr;
-    grid-template-rows: 0.9fr 1.05fr 1fr 1.15fr;
+    grid-template-rows: repeat(4, minmax(0, 1fr));
     grid-template-areas:
-        "system quakes schumann"
-        "solar quakes schumann"
+        "system solar schumann"
+        "quakes solar schumann"
         "volcano neos radar"
         "alerts weather radar";
     gap: 8px;
@@ -107,6 +107,103 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+}
+
+.section-kicker-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 1;
+}
+
+.section-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #ffd98a;
+    opacity: 0.92;
+}
+
+.section-kicker::before {
+    content: "";
+    width: 18px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255,198,95,0.9), rgba(255,198,95,0.15));
+    border-radius: 999px;
+}
+
+.section-role {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,232,191,0.92);
+    background: rgba(255,198,95,0.12);
+    border: 1px solid rgba(255,198,95,0.28);
+    border-radius: 999px;
+    padding: 2px 7px;
+}
+
+.solar-component-slot {
+    position: relative;
+    z-index: 1;
+    margin-top: 8px;
+}
+
+.solar-component-strip {
+    font-size: 9.7px;
+    opacity: 0.96;
+    font-weight: 700;
+    color: #ffd98a;
+    background: rgba(255,198,95,0.12);
+    border: 1px solid rgba(255,198,95,0.35);
+    border-radius: 6px;
+    padding: 2px 5px;
+    line-height: 1.15;
+    white-space: nowrap;
+    box-shadow: inset 0 1px 0 rgba(255,235,190,0.08);
+}
+
+.panel-connector {
+    position: absolute;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.panel-connector.space-weather-link {
+    top: 28px;
+    right: -9px;
+    width: 10px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255,198,95,0.92), rgba(255,198,95,0.42));
+    box-shadow: 0 0 6px rgba(255,198,95,0.45);
+}
+
+.panel-connector.space-weather-link::before,
+.panel-connector.space-weather-link::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(255,198,95,0.95);
+    box-shadow: 0 0 4px rgba(255,198,95,0.48);
+}
+
+.panel-connector.space-weather-link::before {
+    left: -1px;
+}
+
+.panel-connector.space-weather-link::after {
+    right: -1px;
 }
 
 .alerts-toggle {
@@ -191,8 +288,34 @@ body {
 .panel-system { grid-area: system; }
 .panel-quakes { grid-area: quakes; }
 .panel-volcano { grid-area: volcano; }
-.panel-solar { grid-area: solar; }
+.panel-solar {
+    grid-area: solar;
+    overflow: visible;
+}
 .panel-schumann { grid-area: schumann; }
+
+.panel-solar #solar {
+    flex: 0 0 auto;
+}
+
+.panel-solar #kpChart {
+    height: 132px;
+    min-height: 132px;
+    margin-top: 6px;
+    flex: 1 1 auto;
+}
+
+.panel-schumann .widget-scroll {
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-schumann #schumannChart {
+    height: 92px !important;
+    min-height: 92px;
+    margin-top: 6px;
+    flex: 0 0 auto;
+}
 .panel-neos { grid-area: neos; }
 .panel-weather { grid-area: weather; }
 .panel-alerts { grid-area: alerts; }
@@ -260,6 +383,10 @@ body {
 }
 
 @media (max-width: 1220px) {
+    .panel-connector.space-weather-link {
+        display: none;
+    }
+
     .grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-template-rows: none;
@@ -293,7 +420,13 @@ body {
 
 @media (max-height: 900px) {
     #schumannChart {
-        height: 92px !important;
+        height: 82px !important;
+        min-height: 82px;
+    }
+
+    #kpChart {
+        height: 96px;
+        min-height: 96px;
     }
 }
 
@@ -302,7 +435,7 @@ body {
         gap: 6px;
         padding: 6px;
         grid-template-columns: 0.9fr 1.04fr 1.28fr;
-        grid-template-rows: 0.82fr 0.96fr 0.92fr 1.12fr;
+        grid-template-rows: repeat(4, minmax(0, 1fr));
     }
 
     .panel {
@@ -337,12 +470,18 @@ body {
         margin-top: 6px;
     }
 
+    .panel-solar #kpChart {
+        height: 108px;
+        min-height: 108px;
+    }
+
     #schumannChart {
-        height: 86px !important;
+        height: 84px !important;
+        min-height: 84px;
     }
 
     .schumann-spectrogram-image {
-        height: 96px;
+        height: 76px;
     }
 
     .widget-scroll {
@@ -619,32 +758,37 @@ canvas {
 #schumannSpectrogramStatus {
     flex: 0 0 auto;
     overflow: visible;
-    margin-top: 6px;
-}
-
-#schumannSpectrogramStatus {
     margin-top: 4px;
 }
 
+#schumannSpectrogramStatus {
+    margin-top: 2px;
+}
+
 .schumann-spectrogram-wrap {
-    margin-top: 8px;
+    margin-top: 6px;
     border: 1px solid rgba(255,255,255,0.18);
     border-radius: 6px;
     overflow: hidden;
-    background: rgba(6,10,14,0.7);
+    background: rgba(6,10,14,0.35);
+}
+
+.schumann-spectrogram-link {
+    display: block;
+    line-height: 0;
 }
 
 .schumann-spectrogram-image {
     display: block;
     width: 100%;
-    height: 118px;
+    height: 88px;
     object-fit: cover;
-    background: rgba(0,0,0,0.35);
+    object-position: center 18%;
 }
 
 .schumann-status-row {
-    font-size: 9px;
-    line-height: 1.25;
+    font-size: 8.4px;
+    line-height: 1.15;
     opacity: 0.9;
     white-space: normal;
     overflow: visible;
@@ -655,7 +799,7 @@ canvas {
 .schumann-status-stack {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
 }
 
 .schumann-status-row.compact {
@@ -664,13 +808,13 @@ canvas {
 
 .schumann-chip {
     display: inline-block;
-    font-size: 8px;
+    font-size: 7.5px;
     font-weight: 700;
     letter-spacing: 0.02em;
-    padding: 1px 6px;
+    padding: 1px 5px;
     border-radius: 999px;
-    margin-right: 4px;
-    margin-bottom: 2px;
+    margin-right: 3px;
+    margin-bottom: 1px;
     border: 1px solid rgba(255,255,255,0.18);
     background: rgba(255,255,255,0.08);
     color: rgba(235,245,255,0.95);
@@ -937,14 +1081,18 @@ canvas {
 </div>
 
 <div class="panel panel-solar">
+<div class="section-kicker-row"><div class="section-kicker">Space Weather</div><div class="section-role">Driver</div></div>
 <div class="title"><span class="hb-dot unknown" id="led-solar" title="SOL"></span>☀️ Solar Activity</div>
 <div class="desc">Kp Index (0–9). 5+ indicates geomagnetic storm conditions.</div>
+<div class="panel-connector space-weather-link" aria-hidden="true"></div>
+<div id="solarComponents" class="solar-component-slot"></div>
 <div id="solar" class="list"></div>
 <canvas id="kpChart"></canvas>
 <div id="solarHealth"></div>
 </div>
 
 <div class="panel panel-schumann">
+<div class="section-kicker-row"><div class="section-kicker">Space Weather</div><div class="section-role">Response</div></div>
 <div class="title"><span class="hb-dot unknown" id="led-schumann" title="SCH"></span>📡 Schumann Monitor</div>
 <div class="desc">Driver + effect view: SRI forcing proxy and observed ELF spectrogram.</div>
 <div class="widget-scroll">
@@ -954,10 +1102,12 @@ canvas {
     <div><span style="color:#00ffcc;">█</span> SRI 0–20</div>
 </div>
 <div id="schumann" class="list"></div>
-<canvas id="schumannChart" style="height:100px;"></canvas>
+<canvas id="schumannChart"></canvas>
 <div id="schumannSpectrogramStatus" class="list"></div>
 <div class="schumann-spectrogram-wrap">
-    <img id="schumannSpectrogramImage" class="schumann-spectrogram-image" alt="Schumann resonance spectrogram" loading="lazy" decoding="async" draggable="false">
+    <a id="schumannSpectrogramLink" class="schumann-spectrogram-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Open full-size Schumann spectrogram">
+        <img id="schumannSpectrogramImage" class="schumann-spectrogram-image" alt="Schumann resonance spectrogram" loading="eager" decoding="async" draggable="false">
+    </a>
     <div id="schumannSpectrogramError" class="schumann-spectrogram-error hidden"></div>
 </div>
 </div>
@@ -1083,7 +1233,7 @@ const DEFAULT_APP_CONFIG = {
 let APP_CONFIG = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
 const SOLAR_INTERVAL_MS = 60000;
 const SCHUMANN_INTERVAL_MS = 60000;
-const TREND_WINDOW_HOURS = 24;
+const TREND_WINDOW_HOURS = 12;
 const SOLAR_HISTORY_POINTS = Math.ceil((TREND_WINDOW_HOURS * 3600000) / SOLAR_INTERVAL_MS);
 const SCHUMANN_HISTORY_POINTS = Math.ceil((TREND_WINDOW_HOURS * 3600000) / SCHUMANN_INTERVAL_MS);
 const widgetHealth = {};
@@ -1293,7 +1443,6 @@ function setWidgetHtml(el, id, bodyHtml) {
 function updateWidgetAlert(id, shouldAlert, durationMs = 5000) {
     const el = document.getElementById(id);
     if (!el) return;
-
     if (alertTimers[id]) {
         clearTimeout(alertTimers[id]);
         delete alertTimers[id];
@@ -1309,6 +1458,15 @@ function updateWidgetAlert(id, shouldAlert, durationMs = 5000) {
         el.classList.remove("alert");
         delete alertTimers[id];
     }, durationMs);
+}
+
+function renderSolarComponentStrip(componentValues) {
+    const solarComponentsEl = document.getElementById("solarComponents");
+    if (!solarComponentsEl) return;
+
+    solarComponentsEl.innerHTML = componentValues
+        ? `<div class="solar-component-strip">${escapeHtml(componentValues)}</div>`
+        : "";
 }
 
 function parseTimeMs(value) {
@@ -1866,6 +2024,16 @@ function computeTrendSignal(values, risingThreshold, fallingThreshold) {
     return { label: "flat", color: "#c7d3dd" };
 }
 
+function computeChartCeiling(values, options = {}) {
+    const fallback = Math.max(1, toNumber(options.fallback, 10) || 10);
+    const floor = Math.max(1, toNumber(options.floor, fallback) || fallback);
+    const headroomRatio = Math.max(0, toNumber(options.headroomRatio, 0.18) || 0.18);
+    const roundedStep = Math.max(1, toNumber(options.roundedStep, 1) || 1);
+    const ceiling = Math.max(...(Array.isArray(values) ? values : []).filter((value) => Number.isFinite(value)), 0);
+    const padded = ceiling > 0 ? ceiling * (1 + headroomRatio) : fallback;
+    return Math.max(floor, Math.ceil(padded / roundedStep) * roundedStep);
+}
+
 function saveTrendHistory() {
     const payload = {
         savedAt: Date.now(),
@@ -2228,9 +2396,43 @@ function setSchumannSpectrogramError(message = "", level = "degraded") {
     errorEl.className = `schumann-spectrogram-error ${level === "offline" ? "offline" : "degraded"}`;
 }
 
+function syncSchumannSpectrogramLink(linkEl, imgEl, fullUrl = "") {
+    if (!linkEl) return;
+
+    const resolvedUrl = fullUrl || imgEl?.currentSrc || imgEl?.src || schumannSpectrogramState.lastImageSrc || "";
+    linkEl.dataset.fullUrl = resolvedUrl;
+    linkEl.href = resolvedUrl || "#";
+    linkEl.setAttribute("aria-disabled", resolvedUrl ? "false" : "true");
+
+    if (imgEl) {
+        imgEl.style.cursor = resolvedUrl ? "zoom-in" : "default";
+        imgEl.title = resolvedUrl ? "Open full-size spectrogram" : "Spectrogram unavailable";
+    }
+
+    if (linkEl.dataset.bound === "1") return;
+
+    linkEl.dataset.bound = "1";
+    linkEl.addEventListener("click", (event) => {
+        const targetUrl = linkEl.dataset.fullUrl || imgEl?.currentSrc || imgEl?.src || "";
+        if (!targetUrl || targetUrl === "#") {
+            event.preventDefault();
+            return;
+        }
+
+        event.preventDefault();
+        const viewer = window.open(targetUrl, "_blank", "noopener,noreferrer");
+        if (viewer && typeof viewer.focus === "function") {
+            viewer.focus();
+        }
+    });
+}
+
 async function loadSchumannSpectrogram(forceRefresh = false) {
     const imgEl = document.getElementById("schumannSpectrogramImage");
+    const linkEl = document.getElementById("schumannSpectrogramLink");
     if (!imgEl) return;
+
+    syncSchumannSpectrogramLink(linkEl, imgEl);
 
     imgEl.onerror = () => {
         setSchumannSpectrogramError("Image element failed to render the current frame.", "offline");
@@ -2254,6 +2456,7 @@ async function loadSchumannSpectrogram(forceRefresh = false) {
         if (!imgEl.src && schumannSpectrogramState.lastImageSrc) {
             imgEl.src = schumannSpectrogramState.lastImageSrc;
         }
+        syncSchumannSpectrogramLink(linkEl, imgEl, schumannSpectrogramState.lastImageSrc);
         markHealth("schumann", "ok", `ELF cached (${active.name})`);
         renderSchumannSpectrogramStatus("Using cached frame", "ok");
         if (!schumannSpectrogramState.lastError) {
@@ -2281,6 +2484,7 @@ async function loadSchumannSpectrogram(forceRefresh = false) {
             schumannSpectrogramState.lastError = "";
             schumannSpectrogramState.sourceFailures = failures;
             imgEl.src = loaded.src;
+            syncSchumannSpectrogramLink(linkEl, imgEl, loaded.src);
             markHealth("schumann", "ok", `ELF live (${source.name})`);
             renderSchumannSpectrogramStatus("Live frame loaded", "ok");
             setSchumannSpectrogramError("");
@@ -2356,9 +2560,15 @@ async function loadRuntimeConfig() {
                         : DEFAULT_APP_CONFIG.visuals.backgroundImages
                 }
             };
+
+            // Keep radar centered on the same coordinates shown in Current Conditions.
+            APP_CONFIG.radar.lat = APP_CONFIG.location.lat;
+            APP_CONFIG.radar.lon = APP_CONFIG.location.lon;
         }
     } catch (_) {
         APP_CONFIG = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
+        APP_CONFIG.radar.lat = APP_CONFIG.location.lat;
+        APP_CONFIG.radar.lon = APP_CONFIG.location.lon;
     }
 }
 
@@ -3171,7 +3381,7 @@ async function loadSolar() {
         el.innerHTML = `
             <div class="item">Kp: <span style="color:${color}">${k.toFixed(2)}</span></div>
             <div class="item">Status: <span style="color:${color}">${status}</span></div>
-            <div class="item" style="font-size:10px;opacity:0.8;">24h Max: ${kpMax24h.toFixed(2)} | Avg: ${kpAvg24h.toFixed(2)} | Trend: <span style="color:${kpTrend.color}">${kpTrend.label}</span></div>
+            <div class="item" style="font-size:10px;opacity:0.8;">12h Max: ${kpMax24h.toFixed(2)} | Avg: ${kpAvg24h.toFixed(2)} | Trend: <span style="color:${kpTrend.color}">${kpTrend.label}</span></div>
             ${plasmaLine}
             <div class="item" style="font-size:10px;opacity:0.6;">Updated: ${escapeHtml(time)}</div>
         `;
@@ -3179,9 +3389,9 @@ async function loadSolar() {
             strokeColor: color,
             windowHours: TREND_WINDOW_HOURS,
             xTicks: [
-                { ratio: 0, label: "-24h", align: "left", offset: 2 },
-                { ratio: 0.5, label: "-12h", align: "center", offset: 0 },
-                { ratio: 0.75, label: "-6h", align: "center", offset: 0 },
+                { ratio: 0, label: "-12h", align: "left", offset: 2 },
+                { ratio: 0.5, label: "-6h", align: "center", offset: 0 },
+                { ratio: 0.75, label: "-3h", align: "center", offset: 0 },
                 { ratio: 1, label: "0", align: "right", offset: -4 }
             ],
             bands: [
@@ -3236,6 +3446,7 @@ async function loadSchumann() {
         else if (responseValue > 20) color = "#ffaa00";
 
         const schVals = historyValues(schumannHistory);
+        const schChartMax = computeChartCeiling(schVals, { fallback: 20, floor: 12, headroomRatio: 0.22, roundedStep: 2 });
         const schMax24h = Math.max(...schVals);
         const schAvg24h = schVals.reduce((sum, val) => sum + val, 0) / schVals.length;
         const schTrend = computeTrendSignal(schVals, 1.5, -1.5);
@@ -3253,22 +3464,22 @@ async function loadSchumann() {
                 .map(([name, details]) => `${schComponentLabels[name] || name.replace(/_/g, " ")}: ${toNumber(details?.weighted, 0).toFixed(1)}`)
                 .join(" | ")
             : "";
+        renderSolarComponentStrip(componentValues);
 
         markHealth("schumann", "ok", `Source: ${mode}`);
         el.innerHTML = `
             <div class="item">Response: <span style="color:${color}">${responseValue.toFixed(2)} ${escapeHtml(unit)}</span></div>
-            <div class="item" style="font-size:10.4px;opacity:0.9;font-weight:620;">24h Max: ${schMax24h.toFixed(2)} | Avg: ${schAvg24h.toFixed(2)} | Trend: <span style="color:${schTrend.color};font-weight:700;">${schTrend.label}</span></div>
+            <div class="item" style="font-size:10.4px;opacity:0.9;font-weight:620;">12h Max: ${schMax24h.toFixed(2)} | Avg: ${schAvg24h.toFixed(2)} | Trend: <span style="color:${schTrend.color};font-weight:700;">${schTrend.label}</span></div>
             <div class="item" style="font-size:10.3px;opacity:0.82;">Source: ${escapeHtml(source)} | Observed: ${escapeHtml(formatEventTime(observedAt).replace("Time: ", ""))}</div>
-            ${componentValues ? `<div class="item" style="font-size:10.6px;opacity:0.96;font-weight:700;color:#ffd98a;background:rgba(255,198,95,0.12);border:1px solid rgba(255,198,95,0.35);border-radius:6px;padding:3px 6px;">${escapeHtml(componentValues)}</div>` : ""}
         `;
 
-        drawChart("schumannChart", schumannHistory, 60, {
+        drawChart("schumannChart", schumannHistory, schChartMax, {
             strokeColor: color,
             windowHours: TREND_WINDOW_HOURS,
             xTicks: [
-                { ratio: 0, label: "-24h", align: "left", offset: 2 },
-                { ratio: 0.5, label: "-12h", align: "center", offset: 0 },
-                { ratio: 0.75, label: "-6h", align: "center", offset: 0 },
+                { ratio: 0, label: "-12h", align: "left", offset: 2 },
+                { ratio: 0.5, label: "-6h", align: "center", offset: 0 },
+                { ratio: 0.75, label: "-3h", align: "center", offset: 0 },
                 { ratio: 1, label: "0", align: "right", offset: -4 }
             ],
             bands: [
@@ -3285,6 +3496,7 @@ async function loadSchumann() {
         const errMsg = err?.message || "Unknown API error";
         markHealth("schumann", "offline", `API error: ${errMsg}`);
         updateWidgetAlert("schumann", false);
+        renderSolarComponentStrip("");
         el.innerHTML = `Offline<div class="item" style="font-size:10px;opacity:0.7;">${escapeHtml(errMsg)}</div>`;
         renderGraphHealth("schumann", "schumannHealth");
         renderSchumannSpectrogramStatus("SRI feed offline", "degraded");
@@ -3295,7 +3507,7 @@ async function loadSchumann() {
 async function loadQuakes() {
     try {
         const [day, sig] = await Promise.all([
-            fetchJson("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/1.0_day.geojson"),
+            fetchJson("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"),
             fetchJson("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_hour.geojson")
         ]);
 
@@ -3700,10 +3912,11 @@ function drawChart(id, data, maxVal, options = {}) {
     canvas.width = canvas.clientWidth || 300 ;
     canvas.height = canvas.clientHeight || 80;
 
-    const padL = 34;
-    const padR = 40;
-    const padT = 8;
-    const padB = 22;
+    const overlayMode = !!options.overlayMode;
+    const padL = Number.isFinite(options.padLeft) ? options.padLeft : (overlayMode ? 12 : 34);
+    const padR = Number.isFinite(options.padRight) ? options.padRight : (overlayMode ? 12 : 40);
+    const padT = Number.isFinite(options.padTop) ? options.padTop : 8;
+    const padB = Number.isFinite(options.padBottom) ? options.padBottom : (overlayMode ? 18 : 22);
     const plotW = canvas.width - padL - padR;
     const plotH = canvas.height - padT - padB;
     const xTicks = Array.isArray(options.xTicks) && options.xTicks.length
@@ -3718,7 +3931,7 @@ function drawChart(id, data, maxVal, options = {}) {
     ctx.fillStyle = "rgba(255,255,255,0.8)";
     ctx.font = "10px Arial";
 
-    if (Array.isArray(options.bands)) {
+    if (!overlayMode && Array.isArray(options.bands)) {
         options.bands.forEach((band) => {
             const bandMin = Math.max(0, Math.min(maxVal, toNumber(band?.min, 0)));
             const bandMax = Math.max(bandMin, Math.min(maxVal, toNumber(band?.max, maxVal)));
@@ -3729,7 +3942,7 @@ function drawChart(id, data, maxVal, options = {}) {
         });
     }
 
-    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.strokeStyle = overlayMode ? "rgba(245,250,255,0.38)" : "rgba(255,255,255,0.25)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(padL, padT);
@@ -3737,18 +3950,20 @@ function drawChart(id, data, maxVal, options = {}) {
     ctx.lineTo(padL + plotW, padT + plotH);
     ctx.stroke();
 
-    const yTicks = 2;
+    const yTicks = overlayMode ? 1 : 2;
     for (let i = 0; i <= yTicks; i++) {
-        const ratio = i / yTicks;
+        const ratio = yTicks === 0 ? 0 : i / yTicks;
         const y = padT + plotH - (ratio * plotH);
         const val = ratio * maxVal;
-        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.strokeStyle = overlayMode ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.08)";
         ctx.beginPath();
         ctx.moveTo(padL, y);
         ctx.lineTo(padL + plotW, y);
         ctx.stroke();
-        ctx.fillStyle = "rgba(215,225,235,0.85)";
-        ctx.fillText(val.toFixed(0), 2, y + 3);
+        if (!overlayMode) {
+            ctx.fillStyle = "rgba(215,225,235,0.85)";
+            ctx.fillText(val.toFixed(0), 2, y + 3);
+        }
     }
 
     const distinctTs = new Set(points.map((point) => point.ts)).size;
@@ -3775,7 +3990,7 @@ function drawChart(id, data, maxVal, options = {}) {
         const ratio = Math.max(0, Math.min(1, toNumber(tick?.ratio, 0)));
         const x = padL + ratio * plotW;
         const label = String(tick?.label || "");
-        ctx.fillStyle = "rgba(215,225,235,0.85)";
+        ctx.fillStyle = overlayMode ? "rgba(235,245,255,0.88)" : "rgba(215,225,235,0.85)";
         if (tick?.align === "left") {
             ctx.textAlign = "left";
             ctx.fillText(label, x + (toNumber(tick?.offset, 2)), canvas.height - 6);
@@ -3800,10 +4015,10 @@ function drawChart(id, data, maxVal, options = {}) {
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     ctx.strokeStyle = options.strokeColor || "#00ffcc";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = overlayMode ? 2.2 : 2;
     ctx.stroke();
 
-    ctx.fillStyle = "rgba(215,225,235,0.35)";
+    ctx.fillStyle = overlayMode ? "rgba(255,255,255,0.42)" : "rgba(215,225,235,0.35)";
     chartPoints.forEach((point) => {
         const xRatio = Math.max(0, Math.min(1, (point.ts - minTs) / span));
         const x = padL + xRatio * plotW;

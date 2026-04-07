@@ -289,3 +289,8 @@ sanitized-template/
 ## Publishing Note
 
 If you publish the sanitized copy, publish the contents of `sanitized-template/` rather than the live working files in the project root.
+
+## Support
+
+If you find this dashboard useful please consider a contribution to support development
+  - CashApp: `$therealajnelson` 
