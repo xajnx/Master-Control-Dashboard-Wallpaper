@@ -285,6 +285,47 @@ body {
     text-underline-offset: 2px;
 }
 
+.solar-source-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 10px;
+    opacity: 0.86;
+}
+
+.solar-source-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 56px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.22);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.solar-source-badge-primary {
+    color: #7be495;
+    border-color: rgba(123,228,149,0.55);
+    background: rgba(123,228,149,0.14);
+}
+
+.solar-source-badge-fallback {
+    color: #ffd166;
+    border-color: rgba(255,209,102,0.58);
+    background: rgba(255,209,102,0.16);
+}
+
+.solar-source-badge-stale {
+    color: #ff9d9d;
+    border-color: rgba(255,157,157,0.58);
+    background: rgba(255,157,157,0.16);
+}
+
 .panel-system { grid-area: system; }
 .panel-quakes { grid-area: quakes; }
 .panel-volcano { grid-area: volcano; }
@@ -308,12 +349,14 @@ body {
 .panel-schumann .widget-scroll {
     display: flex;
     flex-direction: column;
+    overflow-y: hidden;
 }
 
 .panel-schumann #schumannChart {
-    height: 92px !important;
-    min-height: 92px;
-    margin-top: 6px;
+    height: 140px !important;
+    min-height: 140px;
+    margin-top: 4px;
+    margin-bottom: 0;
     flex: 0 0 auto;
 }
 .panel-neos { grid-area: neos; }
@@ -387,6 +430,30 @@ body {
         display: none;
     }
 
+    .panel-schumann .title-row {
+        align-items: flex-start;
+    }
+
+    .panel-schumann .schumann-header-controls {
+        gap: 3px;
+        max-width: min(60vw, 420px);
+    }
+
+    .panel-schumann .schumann-view-toggle {
+        gap: 3px;
+    }
+
+    .panel-schumann .schumann-view-btn {
+        min-width: 46px;
+        padding: 0 5px;
+    }
+
+    .panel-schumann .schumann-header-controls #schumann .item {
+        max-width: min(60vw, 420px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     .grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-template-rows: none;
@@ -403,6 +470,35 @@ body {
 }
 
 @media (max-width: 760px) {
+    .panel-schumann .title-row {
+        gap: 6px;
+    }
+
+    .panel-schumann .schumann-view-toggle {
+        gap: 2px;
+    }
+
+    .panel-schumann .schumann-view-sep {
+        margin: 0 1px;
+    }
+
+    .panel-schumann .schumann-view-btn {
+        min-width: 42px;
+        height: 18px;
+        font-size: 8px;
+        padding: 0 4px;
+    }
+
+    .panel-schumann .schumann-header-controls {
+        max-width: 64vw;
+    }
+
+    .panel-schumann .schumann-header-controls #schumann .item {
+        font-size: 9px;
+        line-height: 1.12;
+        max-width: 64vw;
+    }
+
     .grid {
         grid-template-columns: 1fr;
         grid-template-areas:
@@ -420,8 +516,8 @@ body {
 
 @media (max-height: 900px) {
     #schumannChart {
-        height: 82px !important;
-        min-height: 82px;
+        height: 144px !important;
+        min-height: 144px;
     }
 
     #kpChart {
@@ -476,8 +572,8 @@ body {
     }
 
     #schumannChart {
-        height: 84px !important;
-        min-height: 84px;
+        height: 132px !important;
+        min-height: 132px;
     }
 
     .schumann-spectrogram-image {
@@ -754,6 +850,65 @@ canvas {
     opacity: 0.78;
 }
 
+.schumann-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.schumann-header-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    min-width: 0;
+}
+
+.schumann-header-controls #schumann {
+    margin-top: 0;
+    text-align: right;
+}
+
+.schumann-header-controls #schumann .item {
+    font-size: 10px;
+    line-height: 1.18;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.schumann-view-sep {
+    width: 1px;
+    height: 14px;
+    background: rgba(255,255,255,0.22);
+    border-radius: 1px;
+    margin: 0 3px;
+    flex: none;
+}
+
+.schumann-view-btn {
+    border: 1px solid rgba(255,255,255,0.28);
+    background: rgba(0,0,0,0.34);
+    color: #d6e2ea;
+    font-size: 9px;
+    border-radius: 4px;
+    min-width: 50px;
+    height: 20px;
+    cursor: pointer;
+    padding: 0 7px;
+}
+
+.schumann-view-btn:hover {
+    background: rgba(255,255,255,0.10);
+}
+
+.schumann-view-btn.active {
+    color: #a6ffd0;
+    border-color: rgba(98,255,169,0.5);
+    background: rgba(98,255,169,0.14);
+}
+
+
+
 #schumann,
 #schumannSpectrogramStatus {
     flex: 0 0 auto;
@@ -771,6 +926,39 @@ canvas {
     border-radius: 6px;
     overflow: hidden;
     background: rgba(6,10,14,0.35);
+    display: none;
+}
+
+.panel-schumann[data-view="generated"] .schumann-spectrogram-wrap,
+.panel-schumann[data-view="tomsk"] .schumann-spectrogram-wrap {
+    min-height: 156px;
+}
+
+.panel-schumann[data-view="generated"] #schumannChart,
+.panel-schumann[data-view="tomsk"] #schumannChart,
+.panel-schumann[data-view="response"] #schumannChart {
+    display: none;
+}
+
+.panel-schumann[data-view="generated"] .schumann-spectrogram-wrap,
+.panel-schumann[data-view="tomsk"] .schumann-spectrogram-wrap {
+    display: block;
+}
+
+.panel-schumann[data-view="chart"] .schumann-spectrogram-wrap,
+.panel-schumann[data-view="response"] .schumann-spectrogram-wrap {
+    display: none;
+}
+
+.panel-schumann[data-view="generated"] #schumann,
+.panel-schumann[data-view="tomsk"] #schumann {
+    display: none;
+}
+
+.panel-schumann[data-view="response"] #schumannLegend,
+.panel-schumann[data-view="generated"] #schumannLegend,
+.panel-schumann[data-view="tomsk"] #schumannLegend {
+    display: none;
 }
 
 .schumann-spectrogram-link {
@@ -781,9 +969,21 @@ canvas {
 .schumann-spectrogram-image {
     display: block;
     width: 100%;
-    height: 88px;
-    object-fit: cover;
-    object-position: center 18%;
+    height: 156px;
+    object-fit: contain;
+    object-position: center center;
+}
+
+.schumann-spectrogram-empty {
+    display: none;
+    min-height: 156px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 10px;
+    color: rgba(215,228,241,0.84);
+    font-size: 10px;
+    line-height: 1.3;
 }
 
 .schumann-status-row {
@@ -865,6 +1065,12 @@ canvas {
     background: rgba(255,209,102,0.18);
     border-color: rgba(255,209,102,0.62);
     color: #ffe3a6;
+}
+
+.schumann-chip-security-insecure {
+    background: rgba(255,138,138,0.18);
+    border-color: rgba(255,138,138,0.62);
+    color: #ffd1d1;
 }
 
 .schumann-kpi {
@@ -1165,26 +1371,34 @@ canvas {
 <div id="solarHealth"></div>
 </div>
 
-<div class="panel panel-schumann">
+<div class="panel panel-schumann" id="schumannPanel" data-view="chart">
 <div class="section-kicker-row"><div class="section-kicker">Space Weather</div><div class="section-role">Response</div></div>
 <div class="title-row">
 <div class="title"><span class="hb-dot unknown" id="led-schumann" title="SCH"></span>📡 Schumann Monitor</div>
+<div class="schumann-header-controls">
+<div class="schumann-view-toggle" role="tablist" aria-label="Schumann visual view">
+    <button id="schumannViewChartBtn" class="schumann-view-btn active" type="button" title="Show trend chart">Chart</button>
+    <button id="schumannViewGeneratedBtn" class="schumann-view-btn" type="button" title="Show generated spectrogram image">Generated</button>
+    <button id="schumannViewTomskBtn" class="schumann-view-btn" type="button" title="Show live Tomsk spectrogram image">Tomsk</button>
+</div>
+<div id="schumann" class="list"></div>
 <span id="schumannAlertChip" class="schumann-alert-chip schumann-alert-baseline" aria-live="polite" title="Correlation alert level">Baseline</span>
+</div>
 </div>
 <div class="desc">Driver + effect view: SRI forcing proxy and observed ELF spectrogram.</div>
 <div class="widget-scroll">
-<div style="font-size:10px;opacity:0.75;margin:6px 0;display:flex;gap:12px;flex-wrap:wrap;">
+<div id="schumannSpectrogramStatus" class="list"></div>
+<div style="font-size:10px;opacity:0.75;margin:4px 0 2px;display:flex;gap:12px;flex-wrap:wrap;" id="schumannLegend">
     <div><span style="color:#ff3333;">█</span> SRI >30</div>
     <div><span style="color:#ffaa00;">█</span> SRI 20–30</div>
     <div><span style="color:#00ffcc;">█</span> SRI 0–20</div>
 </div>
-<div id="schumann" class="list"></div>
 <canvas id="schumannChart"></canvas>
-<div id="schumannSpectrogramStatus" class="list"></div>
 <div class="schumann-spectrogram-wrap">
     <a id="schumannSpectrogramLink" class="schumann-spectrogram-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Open full-size Schumann spectrogram">
         <img id="schumannSpectrogramImage" class="schumann-spectrogram-image" alt="Schumann resonance spectrogram" loading="eager" decoding="async" draggable="false">
     </a>
+    <div id="schumannSpectrogramEmpty" class="schumann-spectrogram-empty">No Image Available From Source</div>
     <div id="schumannSpectrogramError" class="schumann-spectrogram-error hidden"></div>
 </div>
 </div>
@@ -1246,7 +1460,7 @@ canvas {
     </div>
     <div class="radar-health-bar">
         <div id="radarMeta" class="radar-meta">Loading radar snapshot...</div>
-        <button id="refreshBtn" class="radar-refresh-btn" type="button" title="Click: refresh data | Shift-click: hard reload" aria-label="Refresh data. Shift-click for hard reload.">⟳</button>
+        <button id="refreshBtn" class="radar-refresh-btn" type="button" title="Click: refresh data | Shift-click: clear cache + hard reload" aria-label="Refresh data. Shift-click clears cached snapshots and hard reloads.">⟳</button>
     </div>
 </div>
 </div>
@@ -1259,6 +1473,15 @@ canvas {
 const kpHistory = [];
 const schumannHistory = [];
 const solarWindHistory = [];
+const goesHnHistory = [];
+const volcanoCacheState = {
+    events: [],
+    fetchedAtMs: 0
+};
+const neoCacheState = {
+    asteroids: [],
+    fetchedAtMs: 0
+};
 let quakesItems = [];
 let tsunamiItems = [];
 let quakesStatus = "";
@@ -1287,6 +1510,7 @@ const DEFAULT_APP_CONFIG = {
     schumann: {
         highSRIThreshold: 40,
         minCacheMs: 300000,
+        allowInsecureTomsk: false,
         sources: [
             {
                 name: "Tomsk",
@@ -1314,20 +1538,30 @@ let APP_CONFIG = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
 const SOLAR_INTERVAL_MS = 60000;
 const SCHUMANN_INTERVAL_MS = 60000;
 const TREND_WINDOW_HOURS = 12;
+const GEOMAG_WINDOW_HOURS = 24;
+const SOLAR_SOURCE_STALE_MS = 6 * 60 * 60 * 1000;
+const VOLCANO_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+const QUAKES_CACHE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+const TSUNAMI_CACHE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+const ALERTS_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const SOLAR_HISTORY_POINTS = Math.ceil((TREND_WINDOW_HOURS * 3600000) / SOLAR_INTERVAL_MS);
 const SCHUMANN_HISTORY_POINTS = Math.ceil((TREND_WINDOW_HOURS * 3600000) / SCHUMANN_INTERVAL_MS);
+const GOES_HISTORY_POINTS = Math.ceil((GEOMAG_WINDOW_HOURS * 3600000) / 60000);
 const widgetHealth = {};
 const adaptivePollState = {};
 const STALE_THRESHOLD_MS = 10 * 60 * 1000;
 const LUNAR_DISTANCE_KM = 384400;
 const NEO_NEAR_MISS_LD = 0.75;
 const NEO_CLOSE_LD = 3.0;
+const NEO_CACHE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 
 const ALERT_SEVERITY_SCORE = { extreme: 4, severe: 3, moderate: 2, minor: 1, unknown: 0 };
 const ALERT_URGENCY_SCORE = { immediate: 4, expected: 3, future: 2, past: 1, unknown: 0 };
 const ALERT_CERTAINTY_SCORE = { observed: 3, likely: 2, possible: 1, unlikely: 0, unknown: 0 };
 const ALERTS_MODE_KEY = "alerts_critical_only";
+const SCHUMANN_VIEW_KEY = "schumann_view_mode";
 let alertsCriticalOnly = false;
+let schumannViewMode = "chart";
 const alertTimers = {};
 const LOCAL_SEVERE_ALERT_TERMS = [
     "severe thunderstorm warning",
@@ -1375,13 +1609,57 @@ const schumannSpectrogramState = {
     activeSourceName: "",
     activeSourceUrl: "",
     lastImageSrc: "",
+    lastImageSrcByType: {
+        image: "",
+        generated: ""
+    },
     lastObservedAt: "",
     lastObservedAtMs: null,
     lastSuccessAtMs: 0,
     lastAttemptAtMs: 0,
+    lastTransportSecurity: "",
     lastError: "",
     sourceFailures: []
 };
+const schumannChartSeriesState = {
+    lastGeomagneticFetchMs: 0,
+    source: "",
+    error: ""
+};
+// Restore last persisted spectrogram from localStorage (max 24h) for cross-session resilience
+(function () {
+    try {
+        const maxAgeMs = 86400000;
+
+        const legacyTs = parseInt(localStorage.getItem("schumann_sg_cache_ts") || "0", 10);
+        if (legacyTs && Date.now() - legacyTs < maxAgeMs) {
+            const cached = localStorage.getItem("schumann_sg_cache");
+            if (cached && cached.startsWith("data:")) {
+                schumannSpectrogramState.lastImageSrc = cached;
+            }
+        }
+
+        const generatedTs = parseInt(localStorage.getItem("schumann_sg_cache_generated_ts") || "0", 10);
+        if (generatedTs && Date.now() - generatedTs < maxAgeMs) {
+            const generatedCache = localStorage.getItem("schumann_sg_cache_generated");
+            if (generatedCache && generatedCache.startsWith("data:")) {
+                schumannSpectrogramState.lastImageSrcByType.generated = generatedCache;
+            }
+        }
+
+        const imageTs = parseInt(localStorage.getItem("schumann_sg_cache_image_ts") || "0", 10);
+        if (imageTs && Date.now() - imageTs < maxAgeMs) {
+            const imageCache = localStorage.getItem("schumann_sg_cache_image");
+            if (imageCache && imageCache.startsWith("data:")) {
+                schumannSpectrogramState.lastImageSrcByType.image = imageCache;
+            }
+        }
+
+        if (!schumannSpectrogramState.lastImageSrc) {
+            schumannSpectrogramState.lastImageSrc = schumannSpectrogramState.lastImageSrcByType.image || schumannSpectrogramState.lastImageSrcByType.generated || "";
+        }
+    } catch (_) {}
+})();
 const schumannObservationHistory = [];
 const sriHistory = schumannHistory;
 const CORRELATION_DB_NAME = "mission_control_correlation";
@@ -1389,10 +1667,14 @@ const CORRELATION_DB_VERSION = 1;
 const CORRELATION_STORE = "events";
 const CORRELATION_WINDOW_MINUTES = 120;
 const CORRELATION_RETENTION_MS = 24 * 60 * 60 * 1000;
+const CORRELATION_STARTUP_SUPPRESS_MS = 3 * 60 * 1000;
+const CORRELATION_EFFECT_COOLDOWN_MS = 30 * 60 * 1000;
 const correlationEngineState = {
     dbPromise: null,
     pendingSpikes: [],
     events: [],
+    startedAtMs: Date.now(),
+    lastEffectSpikeAtMs: 0,
     latestObservationValue: null,
     latestObservationTs: null,
     latestObservationSource: "",
@@ -1561,10 +1843,51 @@ function renderSolarComponentStrip(componentValues) {
 }
 
 function parseTimeMs(value) {
-    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "number" && Number.isFinite(value)) return normalizeEpochMs(value);
     if (!value) return 0;
     const t = Date.parse(value);
-    return Number.isFinite(t) ? t : 0;
+    return Number.isFinite(t) ? normalizeEpochMs(t) : 0;
+}
+
+function normalizeEpochMs(value) {
+    const numeric = toNumber(value, null);
+    if (numeric === null) return 0;
+
+    // Treat 10-digit unix timestamps as seconds, not milliseconds.
+    if (numeric > 0 && numeric < 1e12) {
+        return Math.round(numeric * 1000);
+    }
+    return Math.round(numeric);
+}
+
+function startOfLocalDayMs(referenceMs = Date.now()) {
+    const d = new Date(toNumber(referenceMs, Date.now()) || Date.now());
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+}
+
+function sanitizeTrendSeries(series, maxPoints) {
+    if (!Array.isArray(series)) return [];
+    const map = new Map();
+    series.forEach((entry) => {
+        const ts = parseTimeMs(entry?.ts);
+        const value = toNumber(entry?.value, null);
+        if (!ts || value === null) return;
+        const point = { ts, value };
+        if (typeof entry?.source === "string" && entry.source.trim()) {
+            point.source = entry.source.trim();
+        }
+        map.set(ts, point);
+    });
+    return [...map.values()]
+        .sort((a, b) => a.ts - b.ts)
+        .slice(-Math.max(1, toNumber(maxPoints, series.length) || series.length));
+}
+
+function replaceSeriesWithSanitized(target, maxPoints) {
+    if (!Array.isArray(target)) return;
+    const sanitized = sanitizeTrendSeries(target, maxPoints);
+    target.splice(0, target.length, ...sanitized);
 }
 
 function formatEventTime(value) {
@@ -1652,15 +1975,31 @@ function getSchumannAnalysisConfig() {
     };
 }
 
-function detectSriSpike(currentValue, threshold = 40) {
+function detectSriSpike(currentValue, threshold = 40, history = [], options = {}) {
     const current = toNumber(currentValue, null);
-    return current !== null && current >= threshold;
+    if (current === null || current < threshold) return false;
+    if (!Array.isArray(history) || history.length < 2) return false;
+
+    const latest = history[history.length - 1];
+    const previous = history[history.length - 2];
+    const latestTs = parseTimeMs(latest?.ts);
+    const previousTs = parseTimeMs(previous?.ts);
+    const maxGapMs = Math.max(5 * 60 * 1000, toNumber(options?.maxGapMs, 20 * 60 * 1000) || 20 * 60 * 1000);
+    if (!latestTs || !previousTs || (latestTs - previousTs) > maxGapMs) return false;
+
+    const previousValue = toNumber(previous?.value, null);
+    if (previousValue === null) return false;
+    return previousValue < threshold;
 }
 
-function detectSriRateOfChange(history, deltaThreshold = 4) {
+function detectSriRateOfChange(history, deltaThreshold = 4, options = {}) {
     if (!Array.isArray(history) || history.length < 2) return false;
     const latest = history[history.length - 1];
     const previous = history[history.length - 2];
+    const latestTs = parseTimeMs(latest?.ts);
+    const previousTs = parseTimeMs(previous?.ts);
+    const maxGapMs = Math.max(5 * 60 * 1000, toNumber(options?.maxGapMs, 20 * 60 * 1000) || 20 * 60 * 1000);
+    if (!latestTs || !previousTs || (latestTs - previousTs) > maxGapMs) return false;
     const latestValue = toNumber(latest?.value, null);
     const previousValue = toNumber(previous?.value, null);
     if (latestValue === null || previousValue === null) return false;
@@ -1713,7 +2052,37 @@ function trimHistoryByAge(history, retentionMs = CORRELATION_RETENTION_MS) {
     }
 }
 
+function recomputeCorrelationStats(referenceMs = Date.now()) {
+    const nowMs = toNumber(referenceMs, Date.now()) || Date.now();
+    const dayStartMs = startOfLocalDayMs(nowMs);
+    const retentionCutoffMs = nowMs - CORRELATION_RETENTION_MS;
+
+    correlationEngineState.events = correlationEngineState.events
+        .filter((event) => {
+            const ts = parseTimeMs(event?.timestamp);
+            return ts >= retentionCutoffMs;
+        })
+        .sort((a, b) => parseTimeMs(a?.timestamp) - parseTimeMs(b?.timestamp));
+
+    const todaysEvents = correlationEngineState.events.filter((event) => parseTimeMs(event?.timestamp) >= dayStartMs);
+    const pendingToday = correlationEngineState.pendingSpikes.filter((pending) => toNumber(pending?.startMs, 0) >= dayStartMs);
+
+    const responses = todaysEvents.filter((event) => String(event?.status || "").toLowerCase() === "response-detected").length;
+    const noResponses = todaysEvents.filter((event) => String(event?.status || "").toLowerCase() === "no-response").length;
+    const falsePositives = todaysEvents.filter((event) => String(event?.status || "").toLowerCase() === "false-positive").length;
+    const persisted = Math.max(0, toNumber(correlationEngineState.stats?.persisted, 0) || 0);
+
+    correlationEngineState.stats = {
+        spikes: responses + noResponses + pendingToday.length,
+        responses,
+        noResponses,
+        falsePositives,
+        persisted
+    };
+}
+
 function queueCorrelationSummary() {
+    recomputeCorrelationStats();
     const s = correlationEngineState.stats;
     const open = correlationEngineState.pendingSpikes.length;
     correlationEngineState.lastSummary = `Correlation: Spikes ${s.spikes} | Confirmed ${s.responses} | Missed ${s.noResponses} | False positives ${s.falsePositives} | Open windows ${open}`;
@@ -1908,8 +2277,47 @@ async function persistCorrelationEventBackend(event) {
     }
 }
 
+async function hydrateCorrelationEventsFromBackend() {
+    const dayStartMs = startOfLocalDayMs();
+    try {
+        const payload = await fetchJson(apiUrl(`/correlation-events?start=${dayStartMs}&limit=2000`), {
+            timeoutMs: 5000,
+            retries: 0
+        });
+        const incoming = Array.isArray(payload?.events) ? payload.events : [];
+        if (incoming.length) {
+            const byId = new Map();
+            incoming.forEach((event) => {
+                if (!event || typeof event !== "object") return;
+                const id = String(event.id || "").trim();
+                if (!id) return;
+                byId.set(id, event);
+            });
+            correlationEngineState.events = [...byId.values()].sort((a, b) => parseTimeMs(a?.timestamp) - parseTimeMs(b?.timestamp));
+            const latestEvent = correlationEngineState.events[correlationEngineState.events.length - 1];
+            if (latestEvent) updateLatestCorrelationOutcome(latestEvent);
+        }
+    } catch (_) {
+        // If backend history is unavailable, runtime counters will rebuild from new events.
+    }
+    queueCorrelationSummary();
+}
+
 function recordCorrelationEvent(event) {
-    correlationEngineState.events.push(event);
+    if (!event || typeof event !== "object") return;
+    const eventId = String(event.id || "").trim();
+    if (eventId) {
+        const existingIndex = correlationEngineState.events.findIndex((item) => String(item?.id || "").trim() === eventId);
+        if (existingIndex >= 0) {
+            correlationEngineState.events[existingIndex] = event;
+        } else {
+            correlationEngineState.events.push(event);
+        }
+    } else {
+        correlationEngineState.events.push(event);
+    }
+
+    correlationEngineState.events.sort((a, b) => parseTimeMs(a?.timestamp) - parseTimeMs(b?.timestamp));
     if (correlationEngineState.events.length > 250) {
         correlationEngineState.events.splice(0, correlationEngineState.events.length - 250);
     }
@@ -1950,25 +2358,60 @@ function detectEffectSpike(history, options = {}) {
     const minIncrease = toNumber(options.minIncrease, analysisConfig.effectSpikeMinIncrease) || analysisConfig.effectSpikeMinIncrease;
 
     const latest = history[history.length - 1];
+    const previous = history[history.length - 2];
     const baselineSlice = history.slice(-1 - baselineWindow, -1).filter((s) => Number.isFinite(s.value));
     if (!latest || !Number.isFinite(latest.value) || baselineSlice.length < 3) return { spike: false };
 
+    const previousBaselineSlice = history
+        .slice(-2 - baselineWindow, -2)
+        .filter((s) => Number.isFinite(s.value));
+
     const baseline = baselineSlice.reduce((sum, s) => sum + s.value, 0) / baselineSlice.length;
     const increase = latest.value - baseline;
+    const previousBaseline = previousBaselineSlice.length
+        ? previousBaselineSlice.reduce((sum, s) => sum + s.value, 0) / previousBaselineSlice.length
+        : baseline;
+    const previousIncrease = previous && Number.isFinite(previous.value)
+        ? previous.value - previousBaseline
+        : null;
+    const delta = previous && Number.isFinite(previous.value)
+        ? latest.value - previous.value
+        : null;
+    const crossedUp = previousIncrease === null || previousIncrease < (minIncrease * 0.92);
+    const isRisingEdge = delta === null || delta > 0.001;
     return {
-        spike: increase >= minIncrease,
+        spike: increase >= minIncrease && crossedUp && isRisingEdge,
         baseline,
         increase,
-        latest: latest.value
+        latest: latest.value,
+        delta,
+        previousIncrease
     };
 }
 
 function recordSchumannObservation(value, tsMs, source = "spectrogram") {
+    const previousEntry = schumannObservationHistory.length
+        ? schumannObservationHistory[schumannObservationHistory.length - 1]
+        : null;
     const entry = {
         ts: toNumber(tsMs, Date.now()) || Date.now(),
         value: toNumber(value, null),
         source: String(source || "spectrogram")
     };
+
+    if (previousEntry && entry.value !== null) {
+        const previousValue = toNumber(previousEntry?.value, null);
+        const duplicateWindowMs = 20 * 60 * 1000;
+        if (
+            previousValue !== null &&
+            previousEntry?.source === entry.source &&
+            Math.abs(previousValue - entry.value) < 1e-9 &&
+            Math.abs(entry.ts - toNumber(previousEntry?.ts, 0)) <= duplicateWindowMs
+        ) {
+            return;
+        }
+    }
+
     schumannObservationHistory.push(entry);
     trimHistoryByAge(schumannObservationHistory);
 
@@ -1977,6 +2420,19 @@ function recordSchumannObservation(value, tsMs, source = "spectrogram") {
     correlationEngineState.latestObservationValue = entry.value;
     correlationEngineState.latestObservationTs = entry.ts;
     correlationEngineState.latestObservationSource = entry.source;
+
+    const startupSuppressMs = Math.max(0, toNumber(CORRELATION_STARTUP_SUPPRESS_MS, 0) || 0);
+    if (Date.now() - correlationEngineState.startedAtMs < startupSuppressMs) {
+        return;
+    }
+
+    const observationGapMs = previousEntry && Number.isFinite(previousEntry.ts)
+        ? Math.max(0, entry.ts - previousEntry.ts)
+        : 0;
+    if (observationGapMs > 12 * 60 * 1000) {
+        // Skip correlation decisions across large feed gaps/restarts to avoid synthetic spikes.
+        return;
+    }
 
     const recentDriver = correlationEngineState.pendingSpikes.some((pending) => {
         return entry.ts >= pending.startMs && entry.ts <= pending.endMs;
@@ -1988,6 +2444,14 @@ function recordSchumannObservation(value, tsMs, source = "spectrogram") {
         minIncrease: getSchumannAnalysisConfig().effectSpikeMinIncrease
     });
     if (!effectSpike.spike) return;
+
+    const cooldownMs = Math.max(0, toNumber(CORRELATION_EFFECT_COOLDOWN_MS, 0) || 0);
+    if (cooldownMs > 0 && correlationEngineState.lastEffectSpikeAtMs > 0) {
+        if (entry.ts - correlationEngineState.lastEffectSpikeAtMs < cooldownMs) {
+            return;
+        }
+    }
+    correlationEngineState.lastEffectSpikeAtMs = entry.ts;
 
     const falsePositiveEvent = {
         id: correlationEventId("fp"),
@@ -2049,8 +2513,15 @@ function processPendingCorrelationWindows(referenceMs = Date.now()) {
 }
 
 function registerSriSpikeIfNeeded(sriValue, observedAtMs, context = {}) {
+    const startupSuppressMs = Math.max(0, toNumber(CORRELATION_STARTUP_SUPPRESS_MS, 0) || 0);
+    if (Date.now() - correlationEngineState.startedAtMs < startupSuppressMs) {
+        processPendingCorrelationWindows(observedAtMs);
+        return;
+    }
+
     const threshold = toNumber(APP_CONFIG?.schumann?.highSRIThreshold, DEFAULT_APP_CONFIG.schumann.highSRIThreshold) || 40;
-    const spike = detectSriSpike(sriValue, threshold) || detectSriRateOfChange(sriHistory, 4);
+    const maxSriGapMs = Math.max(12 * 60 * 1000, SCHUMANN_INTERVAL_MS * 3);
+    const spike = detectSriSpike(sriValue, threshold, sriHistory, { maxGapMs: maxSriGapMs }) || detectSriRateOfChange(sriHistory, 4, { maxGapMs: maxSriGapMs });
     if (!spike) {
         processPendingCorrelationWindows(observedAtMs);
         return;
@@ -2117,9 +2588,21 @@ function parseHistorySeries(raw, maxPoints) {
             return;
         }
         if (!entry || typeof entry !== "object") return;
-        pushHistoryPoint(points, entry.value, maxPoints, entry.ts);
+
+        const value = toNumber(entry?.value, null);
+        const ts = parseTimeMs(entry?.ts) || Date.now();
+        if (value === null || !ts) return;
+
+        const point = { ts, value };
+        if (typeof entry?.source === "string" && entry.source.trim()) {
+            point.source = entry.source.trim();
+        }
+        points.push(point);
+        if (points.length > maxPoints) {
+            points.splice(0, points.length - maxPoints);
+        }
     });
-    return points;
+    return sanitizeTrendSeries(points, maxPoints);
 }
 
 function normalizeAlertValue(value) {
@@ -2234,6 +2717,26 @@ function renderGraphHealth(widgetId, targetId) {
     el.innerHTML = healthLine(widgetId);
 }
 
+function applySchumannViewMode(mode = "chart") {
+    const panel = document.getElementById("schumannPanel");
+    const chartBtn = document.getElementById("schumannViewChartBtn");
+    const generatedBtn = document.getElementById("schumannViewGeneratedBtn");
+    const tomskBtn = document.getElementById("schumannViewTomskBtn");
+    if (!panel || !chartBtn || !generatedBtn || !tomskBtn) return;
+
+    schumannViewMode = (mode === "generated" || mode === "tomsk") ? mode : "chart";
+    panel.setAttribute("data-view", schumannViewMode);
+    chartBtn.classList.toggle("active", schumannViewMode === "chart");
+    generatedBtn.classList.toggle("active", schumannViewMode === "generated");
+    tomskBtn.classList.toggle("active", schumannViewMode === "tomsk");
+
+    if (schumannViewMode === "chart") {
+        drawSchumannCompositeChart("schumannChart", { windowHours: TREND_WINDOW_HOURS });
+    } else {
+        void loadSchumannSpectrogram(false, schumannViewMode);
+    }
+}
+
 function computeTrendSignal(values, risingThreshold, fallingThreshold) {
     if (!Array.isArray(values) || values.length < 6) {
         return { label: "insufficient", color: "#c7d3dd" };
@@ -2267,9 +2770,10 @@ function computeChartCeiling(values, options = {}) {
 function saveTrendHistory() {
     const payload = {
         savedAt: Date.now(),
-        kp: kpHistory.slice(-SOLAR_HISTORY_POINTS),
-        schumann: schumannHistory.slice(-SCHUMANN_HISTORY_POINTS),
-        solar_wind: solarWindHistory.slice(-SOLAR_HISTORY_POINTS)
+        kp: sanitizeTrendSeries(kpHistory, SOLAR_HISTORY_POINTS),
+        schumann: sanitizeTrendSeries(schumannHistory, SCHUMANN_HISTORY_POINTS),
+        solar_wind: sanitizeTrendSeries(solarWindHistory, SOLAR_HISTORY_POINTS),
+        elf_observations: sanitizeTrendSeries(schumannObservationHistory, SCHUMANN_HISTORY_POINTS)
     };
 
     try {
@@ -2298,13 +2802,26 @@ async function restoreTrendHistory() {
         const remoteKp = parseHistorySeries(remote?.kp, SOLAR_HISTORY_POINTS);
         const remoteSch = parseHistorySeries(remote?.schumann, SCHUMANN_HISTORY_POINTS);
         const remoteSw = parseHistorySeries(remote?.solar_wind, SOLAR_HISTORY_POINTS);
+        const remoteElf = parseHistorySeries(remote?.elf_observations, SCHUMANN_HISTORY_POINTS);
 
-        if (remoteKp.length || remoteSch.length || remoteSw.length) {
+        if (remoteKp.length || remoteSch.length || remoteSw.length || remoteElf.length) {
             kpHistory.push(...remoteKp);
             schumannHistory.push(...remoteSch);
             solarWindHistory.push(...remoteSw);
+            schumannObservationHistory.push(...remoteElf);
+            replaceSeriesWithSanitized(kpHistory, SOLAR_HISTORY_POINTS);
+            replaceSeriesWithSanitized(schumannHistory, SCHUMANN_HISTORY_POINTS);
+            replaceSeriesWithSanitized(solarWindHistory, SOLAR_HISTORY_POINTS);
+            replaceSeriesWithSanitized(schumannObservationHistory, SCHUMANN_HISTORY_POINTS);
             return;
         }
+
+        try {
+            localStorage.removeItem("trend_history");
+        } catch (_) {
+            // local cache is optional
+        }
+        return;
     } catch (_) {
         // fall through to local storage restore
     }
@@ -2317,6 +2834,11 @@ async function restoreTrendHistory() {
         kpHistory.push(...parseHistorySeries(parsed?.kp, SOLAR_HISTORY_POINTS));
         schumannHistory.push(...parseHistorySeries(parsed?.schumann, SCHUMANN_HISTORY_POINTS));
         solarWindHistory.push(...parseHistorySeries(parsed?.solar_wind, SOLAR_HISTORY_POINTS));
+        schumannObservationHistory.push(...parseHistorySeries(parsed?.elf_observations, SCHUMANN_HISTORY_POINTS));
+        replaceSeriesWithSanitized(kpHistory, SOLAR_HISTORY_POINTS);
+        replaceSeriesWithSanitized(schumannHistory, SCHUMANN_HISTORY_POINTS);
+        replaceSeriesWithSanitized(solarWindHistory, SOLAR_HISTORY_POINTS);
+        replaceSeriesWithSanitized(schumannObservationHistory, SCHUMANN_HISTORY_POINTS);
     } catch (_) {
         // ignore malformed cache
     }
@@ -2366,7 +2888,7 @@ function normalizeSchumannSource(rawSource, fallbackInterval) {
     if (!url) return null;
 
     const type = String(rawSource.type || "image").trim().toLowerCase();
-    if (type !== "image") return null;
+    if (type !== "image" && type !== "generated") return null;
 
     return {
         name: typeof rawSource.name === "string" && rawSource.name.trim() ? rawSource.name.trim() : "Unnamed source",
@@ -2388,6 +2910,27 @@ function getSchumannSpectrogramSources() {
         : DEFAULT_APP_CONFIG.schumann.sources
             .map((item) => normalizeSchumannSource(item, fallbackInterval))
             .filter(Boolean);
+}
+
+function getSchumannSourcesForMode(mode = "auto") {
+    const all = getSchumannSpectrogramSources();
+    if (mode === "generated") {
+        return all.filter((src) => src.type === "generated");
+    }
+    if (mode === "tomsk") {
+        return all.filter((src) => src.type === "image");
+    }
+    return all;
+}
+
+function shouldUseInsecureTomskProxy(sourceUrl) {
+    if (!APP_CONFIG?.schumann?.allowInsecureTomsk) return false;
+    try {
+        const host = new URL(String(sourceUrl || "")).hostname;
+        return /(^|\.)sosrff\.tsu\.ru$/i.test(host);
+    } catch (_) {
+        return false;
+    }
 }
 
 function formatDeltaMinutes(deltaMs) {
@@ -2462,6 +3005,9 @@ function renderSchumannSpectrogramStatus(message = "", level = "ok") {
     const sourceLabel = schumannSpectrogramState.activeSourceName || "None";
     const detail = compactSchumannStatusDetail(message || "Ready");
     const highMarker = highEvent ? `<span class="schumann-chip schumann-chip-alert">HIGH SRI ${schumannCorrelationState.sriValue.toFixed(2)}</span>` : "";
+    const securityMarker = schumannSpectrogramState.lastTransportSecurity === "insecure"
+        ? `<span class="schumann-chip schumann-chip-security-insecure" title="Proxy used host-scoped insecure TLS fallback">TLS BYPASS</span>`
+        : "";
     const latestIntensity = toNumber(correlationEngineState.latestObservationValue, null);
     const latestTs = toNumber(correlationEngineState.latestObservationTs, null);
     const latestSource = correlationEngineState.latestObservationSource || "n/a";
@@ -2487,6 +3033,7 @@ function renderSchumannSpectrogramStatus(message = "", level = "ok") {
             <div class="schumann-status-row">
                 <span class="schumann-chip schumann-chip-source">SRC ${escapeHtml(sourceLabel)}</span>
                 <span class="schumann-chip schumann-chip-status-${safeLevel}">${levelLabel}</span>
+                ${securityMarker}
                 <span class="schumann-chip">${escapeHtml(detail)}</span>
                 ${highMarker}
             </div>
@@ -2552,6 +3099,35 @@ async function fetchSpectrogramImage(url, timeoutMs = 12000) {
 
         probe.src = candidate;
     });
+}
+
+async function probeSpectrogramProxyHeaders(url, timeoutMs = 3500) {
+    if (!/\/spectrogram-proxy(\?|$)/.test(String(url || ""))) {
+        return { insecureTls: false };
+    }
+
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = setTimeout(() => {
+        if (controller) controller.abort();
+    }, timeoutMs);
+
+    try {
+        const response = await fetch(url, {
+            method: "HEAD",
+            cache: "no-store",
+            signal: controller ? controller.signal : undefined
+        });
+        if (!response.ok) {
+            return { insecureTls: false };
+        }
+        return {
+            insecureTls: response.headers.get("X-Spectrogram-Insecure-TLS") === "1"
+        };
+    } catch (_) {
+        return { insecureTls: false };
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 function getSpectrogramFrequencyScale() {
@@ -2877,20 +3453,54 @@ function syncSchumannSpectrogramLink(linkEl, imgEl, fullUrl = "") {
     });
 }
 
-async function loadSchumannSpectrogram(forceRefresh = false) {
+function setSchumannSpectrogramPlaceholder(show = false, message = "No Image Available From Source") {
+    const emptyEl = document.getElementById("schumannSpectrogramEmpty");
+    const linkEl = document.getElementById("schumannSpectrogramLink");
+    if (!emptyEl || !linkEl) return;
+
+    if (show) {
+        emptyEl.textContent = message;
+        emptyEl.style.display = "flex";
+        linkEl.style.display = "none";
+        return;
+    }
+
+    emptyEl.style.display = "none";
+    linkEl.style.display = "block";
+}
+
+async function loadSchumannSpectrogram(forceRefresh = false, sourceMode = "auto") {
     const imgEl = document.getElementById("schumannSpectrogramImage");
     const linkEl = document.getElementById("schumannSpectrogramLink");
     if (!imgEl) return;
 
+    const resolvedMode = sourceMode === "tomsk" ? "tomsk" : (sourceMode === "generated" ? "generated" : "auto");
+    const requestedType = resolvedMode === "tomsk" ? "image" : (resolvedMode === "generated" ? "generated" : "");
+
     syncSchumannSpectrogramLink(linkEl, imgEl);
+    if (requestedType) {
+        setSchumannSpectrogramPlaceholder(true, "Loading image...");
+    } else {
+        setSchumannSpectrogramPlaceholder(false);
+    }
 
     imgEl.onerror = () => {
-        setSchumannSpectrogramError("Image element failed to render the current frame.", "offline");
+        const fallback = schumannSpectrogramState.lastImageSrc;
+        if (fallback && fallback.startsWith("data:") && imgEl.src !== fallback) {
+            imgEl.src = fallback;
+            syncSchumannSpectrogramLink(linkEl, imgEl, fallback);
+            markHealth("schumann", "degraded", "ELF live frame failed, using cached");
+            renderSchumannSpectrogramStatus("Live frame failed, showing cached spectrogram", "degraded");
+            setSchumannSpectrogramError("Live frame unavailable; showing last cached spectrogram.", "degraded");
+        } else {
+            setSchumannSpectrogramError("Image element failed to render the current frame.", "offline");
+        }
     };
 
-    const sources = getSchumannSpectrogramSources();
+    const sources = getSchumannSourcesForMode(resolvedMode);
     if (sources.length === 0) {
         markHealth("schumann", "degraded", "ELF source not configured");
+        setSchumannSpectrogramPlaceholder(true, "No Image Available From Source");
         renderSchumannSpectrogramStatus("No spectrogram source configured", "offline");
         setSchumannSpectrogramError("No source configured in config.local.json", "offline");
         return;
@@ -2900,19 +3510,25 @@ async function loadSchumannSpectrogram(forceRefresh = false) {
     const minCacheMs = Math.max(300000, toNumber(APP_CONFIG?.schumann?.minCacheMs, 300000) || 300000);
     const active = sources.find((src) => src.name === schumannSpectrogramState.activeSourceName) || sources[0];
     const activeInterval = Math.max(minCacheMs, active?.refreshInterval || minCacheMs);
-    const cacheFresh = schumannSpectrogramState.lastImageSrc && (now - schumannSpectrogramState.lastSuccessAtMs) < activeInterval;
+    const preferredCacheSrc = requestedType ? schumannSpectrogramState.lastImageSrcByType[requestedType] : schumannSpectrogramState.lastImageSrc;
+    const cacheFresh = preferredCacheSrc && (now - schumannSpectrogramState.lastSuccessAtMs) < activeInterval;
 
     if (!forceRefresh && cacheFresh) {
-        if (!imgEl.src && schumannSpectrogramState.lastImageSrc) {
-            imgEl.src = schumannSpectrogramState.lastImageSrc;
+        const cachedSrc = requestedType ? schumannSpectrogramState.lastImageSrcByType[requestedType] : schumannSpectrogramState.lastImageSrc;
+        if (cachedSrc) {
+            imgEl.src = cachedSrc;
         }
-        syncSchumannSpectrogramLink(linkEl, imgEl, schumannSpectrogramState.lastImageSrc);
-        markHealth("schumann", "ok", `ELF cached (${active.name})`);
-        renderSchumannSpectrogramStatus("Using cached frame", "ok");
-        if (!schumannSpectrogramState.lastError) {
-            setSchumannSpectrogramError("");
+        if (cachedSrc) {
+            setSchumannSpectrogramPlaceholder(false);
+            syncSchumannSpectrogramLink(linkEl, imgEl, cachedSrc || "");
+            markHealth("schumann", "ok", `ELF cached (${active.name})`);
+            renderSchumannSpectrogramStatus(requestedType ? "Using cached image" : "Using cached frame", "ok");
+            schumannSpectrogramState.lastTransportSecurity = "";
+            if (!schumannSpectrogramState.lastError) {
+                setSchumannSpectrogramError("");
+            }
+            return;
         }
-        return;
     }
 
     const orderedSources = schumannSpectrogramState.activeSourceName
@@ -2923,8 +3539,16 @@ async function loadSchumannSpectrogram(forceRefresh = false) {
     const failures = [];
     for (const source of orderedSources) {
         try {
-            const proxyUrl = apiUrl(`/spectrogram-proxy?source=${encodeURIComponent(source.url)}${forceRefresh ? "&force=1" : ""}`);
-            const loaded = await fetchSpectrogramImage(proxyUrl);
+            const insecureParam = source.type === "image" && shouldUseInsecureTomskProxy(source.url)
+                ? "&insecure=1"
+                : "";
+            const fetchUrl = source.type === "generated"
+                ? apiUrl(source.url + (forceRefresh ? "?force=1" : ""))
+                : apiUrl(`/spectrogram-proxy?source=${encodeURIComponent(source.url)}${forceRefresh ? "&force=1" : ""}${insecureParam}`);
+            const proxyMeta = source.type === "image"
+                ? await probeSpectrogramProxyHeaders(fetchUrl)
+                : { insecureTls: false };
+            const loaded = await fetchSpectrogramImage(fetchUrl);
             schumannSpectrogramState.activeSourceName = source.name;
             schumannSpectrogramState.activeSourceUrl = source.url;
             schumannSpectrogramState.lastImageSrc = loaded.src;
@@ -2932,19 +3556,39 @@ async function loadSchumannSpectrogram(forceRefresh = false) {
             schumannSpectrogramState.lastObservedAt = new Date(loaded.observedAtMs).toISOString();
             schumannSpectrogramState.lastSuccessAtMs = loaded.observedAtMs;
             schumannSpectrogramState.lastError = "";
+            schumannSpectrogramState.lastTransportSecurity = proxyMeta.insecureTls ? "insecure" : "";
             schumannSpectrogramState.sourceFailures = failures;
+            schumannSpectrogramState.lastImageSrcByType[source.type] = loaded.src;
             imgEl.src = loaded.src;
+            setSchumannSpectrogramPlaceholder(false);
             syncSchumannSpectrogramLink(linkEl, imgEl, loaded.src);
             markHealth("schumann", "ok", `ELF live (${source.name})`);
             renderSchumannSpectrogramStatus("Live frame loaded", "ok");
             setSchumannSpectrogramError("");
 
+            // Persist frame to localStorage as data URL for cross-session fallback (fire-and-forget)
+            void fetch(loaded.src).then(r => r.blob()).then(blob => new Promise(res => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    try {
+                        localStorage.setItem("schumann_sg_cache", reader.result);
+                        localStorage.setItem("schumann_sg_cache_ts", Date.now().toString());
+                        localStorage.setItem(`schumann_sg_cache_${source.type}`, reader.result);
+                        localStorage.setItem(`schumann_sg_cache_${source.type}_ts`, Date.now().toString());
+                    } catch (_) {}
+                    res();
+                };
+                reader.readAsDataURL(blob);
+            })).catch(() => {});
+
             // Keep spectrogram processing async so frame rendering is never blocked.
             setTimeout(() => {
                 void (async () => {
-                    const extracted = await extractSpectrogramIntensityFromUrl(loaded.src);
-                    if (Number.isFinite(extracted)) {
-                        recordSchumannObservation(extracted, loaded.observedAtMs, source.name);
+                    if (source.type === "image") {
+                        const extracted = await extractSpectrogramIntensityFromUrl(loaded.src);
+                        if (Number.isFinite(extracted)) {
+                            recordSchumannObservation(extracted, loaded.observedAtMs, source.name);
+                        }
                     }
                     processPendingCorrelationWindows(loaded.observedAtMs);
                 })();
@@ -2958,19 +3602,28 @@ async function loadSchumannSpectrogram(forceRefresh = false) {
     schumannSpectrogramState.sourceFailures = failures;
     schumannSpectrogramState.lastError = failures.join(" | ");
 
-    if (schumannSpectrogramState.lastImageSrc) {
-        if (!imgEl.src) {
-            imgEl.src = schumannSpectrogramState.lastImageSrc;
+    const modeFallback = requestedType ? schumannSpectrogramState.lastImageSrcByType[requestedType] : "";
+    const fallbackSrc = modeFallback || (requestedType ? "" : schumannSpectrogramState.lastImageSrc);
+
+    if (fallbackSrc) {
+        const cacheIsDataUrl = fallbackSrc.startsWith("data:");
+        if (cacheIsDataUrl || !imgEl.src) {
+            imgEl.src = fallbackSrc;
         }
+        setSchumannSpectrogramPlaceholder(false);
+        syncSchumannSpectrogramLink(linkEl, imgEl, fallbackSrc);
         markHealth("schumann", "degraded", "ELF source stale");
-        renderSchumannSpectrogramStatus("Source outage, using last known frame", "degraded");
-        setSchumannSpectrogramError(`Using cached frame. ${schumannSpectrogramState.lastError || "Source temporarily unavailable."}`, "degraded");
+        renderSchumannSpectrogramStatus("Source outage, using cached image", "degraded");
+        schumannSpectrogramState.lastTransportSecurity = "";
+        setSchumannSpectrogramError(`Using cached image. ${schumannSpectrogramState.lastError || "Source temporarily unavailable."}`, "degraded");
         return;
     }
 
     markHealth("schumann", "offline", "ELF source unreachable");
-    renderSchumannSpectrogramStatus("Source outage with no cached frame", "offline");
-    setSchumannSpectrogramError(schumannSpectrogramState.lastError || "All configured sources failed.", "offline");
+    setSchumannSpectrogramPlaceholder(true, "No Image Available From Source");
+    renderSchumannSpectrogramStatus("Source outage with no cached image", "offline");
+    schumannSpectrogramState.lastTransportSecurity = "";
+    setSchumannSpectrogramError(schumannSpectrogramState.lastError || "No image available from selected source.", "offline");
 }
 
 function assetUrl(path) {
@@ -3000,6 +3653,7 @@ async function loadRuntimeConfig() {
                 schumann: {
                     highSRIThreshold: toNumber(cfg?.schumann?.highSRIThreshold, DEFAULT_APP_CONFIG.schumann.highSRIThreshold),
                     minCacheMs: toNumber(cfg?.schumann?.minCacheMs, DEFAULT_APP_CONFIG.schumann.minCacheMs),
+                    allowInsecureTomsk: !!cfg?.schumann?.allowInsecureTomsk,
                     sources: Array.isArray(cfg?.schumann?.sources) && cfg.schumann.sources.length > 0
                         ? cfg.schumann.sources
                         : DEFAULT_APP_CONFIG.schumann.sources
@@ -3595,6 +4249,72 @@ function sortNeosByDistance(asteroids) {
     });
 }
 
+function readNeoCache() {
+    try {
+        const cachedRaw = localStorage.getItem("neos_cache");
+        if (!cachedRaw) return null;
+        const cached = JSON.parse(cachedRaw);
+        const asteroids = Array.isArray(cached?.asteroids)
+            ? cached.asteroids
+            : (Array.isArray(cached?.neos)
+                ? cached.neos
+                : (Array.isArray(cached?.items) ? cached.items : []));
+        if (!asteroids.length) return null;
+        return {
+            savedAt: toNumber(cached?.savedAt, 0) || toNumber(cached?.timestamp, 0) || 0,
+            asteroids: sortNeosByDistance(asteroids).slice(0, 3)
+        };
+    } catch (_) {
+        return null;
+    }
+}
+
+function writeNeoCache(asteroids) {
+    const nearest = sortNeosByDistance(Array.isArray(asteroids) ? asteroids : []).slice(0, 3);
+    if (!nearest.length) return;
+
+    neoCacheState.asteroids = nearest;
+    neoCacheState.fetchedAtMs = Date.now();
+
+    try {
+        localStorage.setItem("neos_cache", JSON.stringify({
+            savedAt: neoCacheState.fetchedAtMs,
+            asteroids: nearest
+        }));
+    } catch (_) {
+        // cache is optional
+    }
+}
+
+function renderNeoFromCache(el, reason = "Live source unstable") {
+    const memoryAsteroids = Array.isArray(neoCacheState.asteroids) ? neoCacheState.asteroids : [];
+    const memoryTs = toNumber(neoCacheState.fetchedAtMs, 0) || 0;
+    const persisted = readNeoCache();
+
+    let asteroids = memoryAsteroids;
+    let savedAt = memoryTs;
+
+    if ((!asteroids.length || !savedAt) && persisted) {
+        asteroids = persisted.asteroids;
+        savedAt = persisted.savedAt;
+        neoCacheState.asteroids = persisted.asteroids;
+        neoCacheState.fetchedAtMs = persisted.savedAt;
+    }
+
+    if (!asteroids.length) return false;
+
+    const ageMs = savedAt ? Math.max(0, Date.now() - savedAt) : Number.POSITIVE_INFINITY;
+    const ageLabel = Number.isFinite(ageMs) ? formatAge(ageMs) : "unknown age";
+    const freshnessLabel = ageMs <= NEO_CACHE_MAX_AGE_MS ? "cached" : "stale cached";
+
+    markHealth("neos", "degraded", `${reason}; using ${freshnessLabel} data (${ageLabel} old)`);
+    setWidgetHtml(el, "neos", `
+        <div class="item" style="font-size:10px;opacity:0.8;color:#ffd166;">${escapeHtml(reason)}. Showing ${escapeHtml(freshnessLabel)} NEO snapshot (${escapeHtml(ageLabel)} old).</div>
+        ${renderNeoItems(asteroids, 3)}
+    `);
+    return true;
+}
+
 async function fetchJplNeoFallback() {
     const dMin = new Date();
     const dMax = new Date(Date.now() + 3 * 86400000);
@@ -3739,41 +4459,11 @@ async function loadSystem() {
 async function loadSolar() {
     const el = document.getElementById("solar");
     try {
-        const [data, plasmaData] = await Promise.all([
-            fetchJson("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"),
-            fetchJson("https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json", { timeoutMs: 7000, retries: 1 }).catch(() => null)
-        ]);
-
-        if (!Array.isArray(data) || data.length < 1) {
-            throw new Error("Invalid Kp payload");
-        }
-
-        // NOAA currently returns an array of objects; keep compatibility with older array rows.
-        let latestEntry = null;
-        let k = NaN;
-
-        for (let i = data.length - 1; i >= 0; i--) {
-            const row = data[i];
-            if (Array.isArray(row)) {
-                if (row.length < 2) continue;
-                k = parseFloat(row[1]);
-                if (!isNaN(k)) {
-                    latestEntry = { time: row[0], kp: row[1] };
-                    break;
-                }
-                continue;
-            }
-
-            if (!row || typeof row !== "object") continue;
-            const parsed = parseFloat(row.Kp);
-            if (!isNaN(parsed)) {
-                k = parsed;
-                latestEntry = { time: row.time_tag, kp: row.Kp };
-                break;
-            }
-        }
-
-        if (isNaN(k)) {
+        replaceSeriesWithSanitized(kpHistory, SOLAR_HISTORY_POINTS);
+        replaceSeriesWithSanitized(solarWindHistory, SOLAR_HISTORY_POINTS);
+        const data = await fetchJson(apiUrl("/solar-composite"), { timeoutMs: 7000, retries: 1 });
+        const k = toNumber(data?.kp, null);
+        if (k === null) {
             updateWidgetAlert("solar", false);
             const kpVals = historyValues(kpHistory);
             if (kpVals.length > 0) {
@@ -3788,20 +4478,24 @@ async function loadSolar() {
             return;
         }
 
-        const time = latestEntry?.time ?? nowLabel();
-        pushHistoryPoint(kpHistory, k, SOLAR_HISTORY_POINTS, time);
+        const time = data?.observed_at || nowLabel();
+        const sourceTimeMs = parseTimeMs(time);
+        const sourceAgeMs = sourceTimeMs ? Math.max(0, Date.now() - sourceTimeMs) : 0;
+        const sourceIsStale = sourceTimeMs > 0 && sourceAgeMs > SOLAR_SOURCE_STALE_MS;
 
-        let plasmaDensity = null;
-        if (Array.isArray(plasmaData) && plasmaData.length > 1) {
-            for (let i = plasmaData.length - 1; i >= 1; i--) {
-                const row = plasmaData[i];
-                if (!Array.isArray(row) || row.length < 2) continue;
-                const parsed = parseFloat(row[1]);
-                if (!isNaN(parsed)) {
-                    plasmaDensity = parsed;
-                    pushHistoryPoint(solarWindHistory, parsed, SOLAR_HISTORY_POINTS, row[0]);
-                    break;
-                }
+        const lastKpPoint = kpHistory.length ? kpHistory[kpHistory.length - 1] : null;
+        const nextTs = sourceTimeMs || Date.now();
+        if (!lastKpPoint || lastKpPoint.ts !== nextTs || Math.abs(lastKpPoint.value - k) > 0.0001) {
+            pushHistoryPoint(kpHistory, k, SOLAR_HISTORY_POINTS, nextTs);
+        }
+
+        const plasmaDensity = toNumber(data?.plasma_density, null);
+        const plasmaObservedAt = data?.plasma_observed_at || "";
+        if (plasmaDensity !== null) {
+            const plasmaTs = parseTimeMs(plasmaObservedAt) || Date.now();
+            const lastPlasmaPoint = solarWindHistory.length ? solarWindHistory[solarWindHistory.length - 1] : null;
+            if (!lastPlasmaPoint || lastPlasmaPoint.ts !== plasmaTs || Math.abs(lastPlasmaPoint.value - plasmaDensity) > 0.0001) {
+                pushHistoryPoint(solarWindHistory, plasmaDensity, SOLAR_HISTORY_POINTS, plasmaTs);
             }
         }
 
@@ -3827,12 +4521,42 @@ async function loadSolar() {
             plasmaLine = `<div class="item" style="font-size:10px;opacity:0.8;">Solar wind plasma: ${plasmaDensity.toFixed(2)} p/cm³ | Trend: <span style="color:${swTrend.color}">${swTrend.label}</span></div>`;
         }
 
-        markHealth("solar", "ok", `${TREND_WINDOW_HOURS}h trend`);
+        const kpSource = String(data?.kp_source || "noaa-swpc-kp").trim();
+        const fallbackUsed = !!data?.fallback_used;
+        const sourceLabel = kpSource === "gfz-kp-nowcast" ? "GFZ Kp" : "NOAA Kp";
+        let sourceBadgeClass = "solar-source-badge solar-source-badge-primary";
+        let sourceBadgeText = "Primary";
+        if (fallbackUsed) {
+            sourceBadgeClass = "solar-source-badge solar-source-badge-fallback";
+            sourceBadgeText = "Fallback";
+        }
+        if (sourceIsStale) {
+            sourceBadgeClass = "solar-source-badge solar-source-badge-stale";
+            sourceBadgeText = "Stale";
+        }
+        const sourceLine = `<div class="item solar-source-row"><span class="${sourceBadgeClass}" title="${escapeHtml(kpSource)}">${sourceBadgeText}</span><span>Source: ${escapeHtml(sourceLabel)}</span></div>`;
+        const componentErrors = Array.isArray(data?.component_errors) ? data.component_errors.filter(Boolean) : [];
+        const errorLine = componentErrors.length
+            ? `<div class="item" style="font-size:10px;opacity:0.72;color:#ffd166;">Upstream note: ${escapeHtml(componentErrors[0])}</div>`
+            : "";
+
+        if (sourceIsStale) {
+            markHealth("solar", "degraded", `Source stale (${formatAge(sourceAgeMs)} old)`);
+        } else {
+            markHealth("solar", "ok", `${TREND_WINDOW_HOURS}h trend`);
+        }
+
+        const freshnessLine = sourceIsStale
+            ? `<div class="item" style="font-size:10px;opacity:0.8;color:#ffd166;">Source age: ${escapeHtml(formatAge(sourceAgeMs))} (stale)</div>`
+            : "";
         el.innerHTML = `
             <div class="item">Kp: <span style="color:${color}">${k.toFixed(2)}</span></div>
             <div class="item">Status: <span style="color:${color}">${status}</span></div>
             <div class="item" style="font-size:10px;opacity:0.8;">12h Max: ${kpMax24h.toFixed(2)} | Avg: ${kpAvg24h.toFixed(2)} | Trend: <span style="color:${kpTrend.color}">${kpTrend.label}</span></div>
             ${plasmaLine}
+            ${sourceLine}
+            ${errorLine}
+            ${freshnessLine}
             <div class="item" style="font-size:10px;opacity:0.6;">Updated: ${escapeHtml(time)}</div>
         `;
         drawChart("kpChart", kpHistory, 9, {
@@ -3853,6 +4577,95 @@ async function loadSolar() {
         renderGraphHealth("solar", "solarHealth");
     } catch (err) {
         console.error("Solar Error:", err);
+        try {
+            const directData = await fetchJson("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json", { timeoutMs: 5000, retries: 0 });
+            let directKp = null;
+            let directTime = "";
+            if (Array.isArray(directData)) {
+                for (let i = directData.length - 1; i >= 0; i--) {
+                    const row = directData[i];
+                    if (Array.isArray(row) && row.length >= 2) {
+                        const parsed = toNumber(row[1], null);
+                        if (parsed !== null) {
+                            directKp = parsed;
+                            directTime = String(row[0] || "").trim();
+                            break;
+                        }
+                    } else if (row && typeof row === "object") {
+                        const parsed = toNumber(row.Kp, null);
+                        if (parsed !== null) {
+                            directKp = parsed;
+                            directTime = String(row.time_tag || "").trim();
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (directKp !== null) {
+                const sourceTimeMs = parseTimeMs(directTime);
+                const sourceAgeMs = sourceTimeMs ? Math.max(0, Date.now() - sourceTimeMs) : 0;
+                const sourceIsStale = sourceTimeMs > 0 && sourceAgeMs > SOLAR_SOURCE_STALE_MS;
+                const pointTs = sourceTimeMs || Date.now();
+                const lastKpPoint = kpHistory.length ? kpHistory[kpHistory.length - 1] : null;
+                if (!lastKpPoint || lastKpPoint.ts !== pointTs || Math.abs(lastKpPoint.value - directKp) > 0.0001) {
+                    pushHistoryPoint(kpHistory, directKp, SOLAR_HISTORY_POINTS, pointTs);
+                }
+
+                const kpVals = historyValues(kpHistory);
+                const kpMax24h = kpVals.length ? Math.max(...kpVals) : directKp;
+                const kpAvg24h = kpVals.length
+                    ? (kpVals.reduce((sum, val) => sum + val, 0) / kpVals.length)
+                    : directKp;
+                const kpTrend = computeTrendSignal(kpVals, 0.25, -0.25);
+                const solarAlert = directKp >= 5 && kpTrend.label === "rising";
+                updateWidgetAlert("solar", solarAlert);
+
+                let status = "CALM";
+                let color = "#00ffcc";
+                if (directKp >= 5) { status = "STORM"; color = "#ff3333"; }
+                else if (directKp >= 4) { status = "ELEVATED"; color = "#ffaa00"; }
+
+                const sourceBadgeClass = sourceIsStale
+                    ? "solar-source-badge solar-source-badge-stale"
+                    : "solar-source-badge solar-source-badge-fallback";
+                const sourceBadgeText = sourceIsStale ? "Stale" : "Fallback";
+                const freshnessLine = sourceIsStale
+                    ? `<div class="item" style="font-size:10px;opacity:0.8;color:#ffd166;">Source age: ${escapeHtml(formatAge(sourceAgeMs))} (stale)</div>`
+                    : "";
+
+                markHealth("solar", "degraded", "Composite unavailable, using direct NOAA fallback");
+                el.innerHTML = `
+                    <div class="item">Kp: <span style="color:${color}">${directKp.toFixed(2)}</span></div>
+                    <div class="item">Status: <span style="color:${color}">${status}</span></div>
+                    <div class="item" style="font-size:10px;opacity:0.8;">12h Max: ${kpMax24h.toFixed(2)} | Avg: ${kpAvg24h.toFixed(2)} | Trend: <span style="color:${kpTrend.color}">${kpTrend.label}</span></div>
+                    <div class="item solar-source-row"><span class="${sourceBadgeClass}" title="noaa-direct">${sourceBadgeText}</span><span>Source: NOAA direct</span></div>
+                    ${freshnessLine}
+                    <div class="item" style="font-size:10px;opacity:0.6;">Updated: ${escapeHtml(directTime || nowLabel())}</div>
+                `;
+
+                drawChart("kpChart", kpHistory, 9, {
+                    strokeColor: color,
+                    windowHours: TREND_WINDOW_HOURS,
+                    xTicks: [
+                        { ratio: 0, label: "-12h", align: "left", offset: 2 },
+                        { ratio: 0.5, label: "-6h", align: "center", offset: 0 },
+                        { ratio: 0.75, label: "-3h", align: "center", offset: 0 },
+                        { ratio: 1, label: "0", align: "right", offset: -4 }
+                    ],
+                    bands: [
+                        { min: 0, max: 4, color: "rgba(0,255,204,0.06)" },
+                        { min: 4, max: 5, color: "rgba(255,170,0,0.08)" },
+                        { min: 5, max: 9, color: "rgba(255,51,51,0.10)" }
+                    ]
+                });
+                renderGraphHealth("solar", "solarHealth");
+                return;
+            }
+        } catch (fallbackErr) {
+            console.warn("Solar direct fallback failed:", fallbackErr);
+        }
+
         markHealth("solar", "offline", "Solar feed unavailable");
         updateWidgetAlert("solar", false);
         el.innerHTML = "Offline";
@@ -3860,9 +4673,381 @@ async function loadSolar() {
     }
 }
 
+function buildVolcanoWidgetBody(events) {
+    const visibleEvents = events.slice(0, 5);
+    const overflowHtml = events.length > visibleEvents.length
+        ? `<div class="item" style="font-size:10px;opacity:0.72;color:#9fc5e8;">+${events.length - visibleEvents.length} more volcano events</div>`
+        : "";
+
+    return `${visibleEvents.map((v) => {
+        const geometries = Array.isArray(v?.geometry) ? v.geometry : [];
+        const latest = geometries.length > 0 ? geometries[geometries.length - 1] : null;
+        const first = geometries.length > 0 ? geometries[0] : null;
+        const startedTs = parseTimeMs(first?.date);
+        const latestTs = parseTimeMs(latest?.date);
+        const activeDays = (startedTs && latestTs) ? Math.max(1, Math.round((latestTs - startedTs) / 86400000)) : null;
+        const categories = Array.isArray(v?.categories) ? v.categories.map((c) => c?.title).filter(Boolean).join(", ") : "Volcanoes";
+        const sourceUrl = Array.isArray(v?.sources) && v.sources[0]?.url ? safeHref(v.sources[0].url) : "#";
+        const coords = Array.isArray(latest?.coordinates) ? latest.coordinates : [];
+        const loc = coords.length >= 2 ? `${toNumber(coords[1], 0).toFixed(2)}, ${toNumber(coords[0], 0).toFixed(2)}` : "N/A";
+
+        return `
+            <div class="neo-item">
+                <div class="neo-top">
+                    <div class="neo-name">${escapeHtml(v?.title ?? "Unnamed event")}</div>
+                    <span class="neo-badge neo-close">${escapeHtml(v?.closed ? "Closed" : "Active")}</span>
+                </div>
+                <div class="neo-meta">Category: ${escapeHtml(categories)}</div>
+                <div class="neo-meta">Start: ${escapeHtml(formatEventTime(first?.date).replace("Time: ", ""))} | Latest: ${escapeHtml(formatEventTime(latest?.date).replace("Time: ", ""))}</div>
+                <div class="neo-meta">Active Days: ${activeDays !== null ? activeDays : "N/A"} | Coordinates: ${escapeHtml(loc)}</div>
+                <div class="neo-meta">Pyroclastic Flow Rate: N/A (not provided by EONET)</div>
+                <div class="neo-meta"><a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" style="color:#9fc5e8;text-decoration:none;">Source</a></div>
+            </div>
+        `;
+    }).join("")}${overflowHtml}`;
+}
+
+async function loadGeomagneticSeries(hours = GEOMAG_WINDOW_HOURS) {
+    const now = Date.now();
+    if (schumannChartSeriesState.lastGeomagneticFetchMs && (now - schumannChartSeriesState.lastGeomagneticFetchMs) < 240000) {
+        return;
+    }
+
+    try {
+        const data = await fetchJson(apiUrl(`/geomagnetic-series?hours=${encodeURIComponent(hours)}&component=Hn`), {
+            timeoutMs: 7000,
+            retries: 0
+        });
+        const rawPoints = Array.isArray(data?.points) ? data.points : [];
+        const parsed = parseHistorySeries(rawPoints, GOES_HISTORY_POINTS);
+        goesHnHistory.splice(0, goesHnHistory.length, ...parsed);
+        schumannChartSeriesState.source = String(data?.source || "").trim();
+        schumannChartSeriesState.error = "";
+    } catch (err) {
+        schumannChartSeriesState.error = err?.message || "Geomagnetic series unavailable";
+    } finally {
+        schumannChartSeriesState.lastGeomagneticFetchMs = now;
+    }
+}
+
+function drawSchumannCompositeChart(id, options = {}) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const windowHours = Number.isFinite(options.windowHours) ? options.windowHours : TREND_WINDOW_HOURS;
+    const windowMs = Math.max(3600000, windowHours * 3600000);
+    const maxTs = Date.now();
+    const minTs = maxTs - windowMs;
+
+    const quantile = (sortedValues, q) => {
+        if (!Array.isArray(sortedValues) || !sortedValues.length) return null;
+        const clampedQ = Math.max(0, Math.min(1, toNumber(q, 0.5)));
+        const idx = (sortedValues.length - 1) * clampedQ;
+        const lo = Math.floor(idx);
+        const hi = Math.ceil(idx);
+        if (lo === hi) return sortedValues[lo];
+        const weight = idx - lo;
+        return sortedValues[lo] * (1 - weight) + sortedValues[hi] * weight;
+    };
+
+    const prepareSeries = (series, config) => {
+        const points = (Array.isArray(series) ? series : [])
+            .map((entry) => ({
+                ts: parseTimeMs(entry?.ts) || 0,
+                value: toNumber(entry?.value, null)
+            }))
+            .filter((point) => point.ts >= minTs && point.ts <= maxTs && point.value !== null)
+            .sort((a, b) => a.ts - b.ts);
+
+        if (points.length < 2) {
+            return {
+                ...config,
+                points: [],
+                min: null,
+                max: null,
+                baseline: null,
+                bandLow: null,
+                bandHigh: null,
+                yMin: null,
+                yMax: null
+            };
+        }
+
+        let min = Number.POSITIVE_INFINITY;
+        let max = Number.NEGATIVE_INFINITY;
+        points.forEach((point) => {
+            if (point.value < min) min = point.value;
+            if (point.value > max) max = point.value;
+        });
+
+        const tailWindow = Math.min(points.length, 120);
+        const tail = points.slice(points.length - tailWindow);
+        const baseline = tail.reduce((sum, p) => sum + p.value, 0) / tail.length;
+        const variance = tail.reduce((sum, p) => sum + Math.pow(p.value - baseline, 2), 0) / tail.length;
+        const std = Math.sqrt(Math.max(variance, 0));
+
+        let coreMin = min;
+        let coreMax = max;
+        if (config.useRobustRange) {
+            const sortedTail = tail.map((p) => p.value).sort((a, b) => a - b);
+            const qLow = quantile(sortedTail, config.lowQuantile ?? 0.1);
+            const qHigh = quantile(sortedTail, config.highQuantile ?? 0.9);
+            if (qLow !== null && qHigh !== null && qHigh > qLow) {
+                coreMin = qLow;
+                coreMax = qHigh;
+            }
+        }
+
+        const span = Math.max(0.0001, coreMax - coreMin);
+        const stdPad = std * (config.stdPadMultiplier || 2.2);
+        const spanPad = span * (config.spanPadRatio || 0.16);
+        const pad = Math.max(stdPad, spanPad, config.minPad || 0.5);
+        const yMin = Math.min(coreMin - (pad * 0.25), baseline - pad);
+        const yMax = Math.max(coreMax + (pad * 0.25), baseline + pad);
+        const bandLow = baseline - Math.max(std * 0.85, span * 0.08, config.minBand || 0.25);
+        const bandHigh = baseline + Math.max(std * 0.85, span * 0.08, config.minBand || 0.25);
+
+        return {
+            ...config,
+            points,
+            min,
+            max,
+            baseline,
+            bandLow,
+            bandHigh,
+            yMin,
+            yMax
+        };
+    };
+
+    const seriesDefs = [
+        prepareSeries(schumannHistory, {
+            id: "sri",
+            label: "SRI",
+            unit: "a.u.",
+            color: "#00ffcc",
+            bandColor: "rgba(0,255,204,0.08)",
+            minPad: 1.2,
+            minBand: 0.6,
+            gapThresholdMs: 12 * 60 * 1000
+        }),
+        prepareSeries(goesHnHistory, {
+            id: "goes",
+            label: "GOES Hn",
+            unit: "nT",
+            color: "#37a8ff",
+            bandColor: "rgba(55,168,255,0.08)",
+            minPad: 0.9,
+            minBand: 0.3,
+            gapThresholdMs: 12 * 60 * 1000
+        }),
+        prepareSeries(schumannObservationHistory, {
+            id: "elf",
+            label: "ELF 7-9",
+            unit: "idx",
+            color: "#ffd166",
+            bandColor: "rgba(255,209,102,0.08)",
+            minPad: 0.012,
+            minBand: 0.008,
+            useRobustRange: true,
+            lowQuantile: 0.05,
+            highQuantile: 0.95,
+            stdPadMultiplier: 1.1,
+            spanPadRatio: 0.08,
+            gapThresholdMs: 25 * 60 * 1000
+        })
+    ];
+
+    canvas.width = canvas.clientWidth || 300;
+    canvas.height = canvas.clientHeight || 120;
+
+    const padL = 98;
+    const padR = 14;
+    const padT = 14;
+    const padB = 26;
+    const plotW = canvas.width - padL - padR;
+    const plotH = canvas.height - padT - padB;
+    const laneGap = 4;
+    const laneH = Math.max(14, (plotH - (laneGap * (seriesDefs.length - 1))) / seriesDefs.length);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.font = "9px Arial";
+
+    const valueToLaneY = (value, yMin, yMax, laneTop, laneBottom) => {
+        const ratio = (value - yMin) / Math.max(yMax - yMin, 0.0001);
+        return laneBottom - (Math.max(0, Math.min(1, ratio)) * (laneBottom - laneTop));
+    };
+
+    const buildSeriesSegments = (series) => {
+        const segments = [];
+        const bridges = [];
+        const gapThresholdMs = Math.max(0, toNumber(series?.gapThresholdMs, 0) || 0);
+        let currentSegment = [];
+
+        series.points.forEach((point, index) => {
+            if (index === 0) {
+                currentSegment.push(point);
+                return;
+            }
+
+            const previous = series.points[index - 1];
+            const gapMs = Math.max(0, point.ts - previous.ts);
+            if (gapThresholdMs > 0 && gapMs > gapThresholdMs) {
+                if (currentSegment.length) {
+                    segments.push(currentSegment);
+                }
+                bridges.push({ from: previous, to: point });
+                currentSegment = [point];
+                return;
+            }
+
+            currentSegment.push(point);
+        });
+
+        if (currentSegment.length) {
+            segments.push(currentSegment);
+        }
+
+        return { segments, bridges };
+    };
+
+    const drawPolyline = (points, laneTop, laneBottom, series, options = {}) => {
+        if (!Array.isArray(points) || points.length < 2) return;
+
+        ctx.save();
+        ctx.beginPath();
+        points.forEach((point, pointIdx) => {
+            const xRatio = Math.max(0, Math.min(1, (point.ts - minTs) / windowMs));
+            const x = padL + xRatio * plotW;
+            const y = valueToLaneY(point.value, series.yMin, series.yMax, laneTop, laneBottom);
+            if (pointIdx === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.strokeStyle = series.color;
+        ctx.lineWidth = options.lineWidth || 2;
+        ctx.globalAlpha = options.alpha || 1;
+        if (Array.isArray(options.lineDash)) {
+            ctx.setLineDash(options.lineDash);
+        }
+        ctx.stroke();
+        ctx.restore();
+    };
+
+    seriesDefs.forEach((series, idx) => {
+        const laneTop = padT + idx * (laneH + laneGap);
+        const laneBottom = laneTop + laneH;
+
+        ctx.fillStyle = "rgba(255,255,255,0.03)";
+        ctx.fillRect(padL, laneTop, plotW, laneH);
+        ctx.strokeStyle = "rgba(255,255,255,0.10)";
+        ctx.strokeRect(padL, laneTop, plotW, laneH);
+
+        if (series.points.length < 2 || series.yMin === null || series.yMax === null) {
+            ctx.fillStyle = "rgba(220,232,244,0.86)";
+            ctx.textAlign = "right";
+            ctx.fillText(`${series.label} (${series.unit})`, padL - 6, laneTop + 10);
+            ctx.fillStyle = "rgba(194,210,224,0.78)";
+            ctx.fillText("no data", padL - 6, laneBottom - 3);
+            return;
+        }
+
+        const bandTop = valueToLaneY(series.bandHigh, series.yMin, series.yMax, laneTop, laneBottom);
+        const bandBottom = valueToLaneY(series.bandLow, series.yMin, series.yMax, laneTop, laneBottom);
+        ctx.fillStyle = series.bandColor;
+        ctx.fillRect(padL, Math.min(bandTop, bandBottom), plotW, Math.max(1, Math.abs(bandBottom - bandTop)));
+
+        const baselineY = valueToLaneY(series.baseline, series.yMin, series.yMax, laneTop, laneBottom);
+        ctx.strokeStyle = "rgba(255,255,255,0.22)";
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(padL, baselineY);
+        ctx.lineTo(padL + plotW, baselineY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.beginPath();
+        ctx.moveTo(padL, laneTop + laneH * 0.5);
+        ctx.lineTo(padL + plotW, laneTop + laneH * 0.5);
+        ctx.stroke();
+
+        const digits = series.id === "elf" ? 2 : 1;
+        const rangeLine = `lo ${series.yMin.toFixed(digits)}  b ${series.baseline.toFixed(digits)}  hi ${series.yMax.toFixed(digits)}`;
+        ctx.fillStyle = "rgba(226,237,248,0.95)";
+        ctx.textAlign = "right";
+        ctx.fillText(`${series.label} (${series.unit})`, padL - 6, laneTop + 8);
+        ctx.fillStyle = "rgba(210,224,238,0.9)";
+        ctx.fillText(rangeLine, padL - 6, laneBottom - 3);
+    });
+
+    [
+        { ratio: 0, label: `-${windowHours}h`, align: "left", offset: 2 },
+        { ratio: 0.5, label: `-${Math.round(windowHours / 2)}h`, align: "center", offset: 0 },
+        { ratio: 1, label: "0", align: "right", offset: -4 }
+    ].forEach((tick) => {
+        const x = padL + (tick.ratio * plotW);
+        const label = tick.label;
+        ctx.fillStyle = "rgba(229,238,246,0.92)";
+        if (tick.align === "left") {
+            ctx.textAlign = "left";
+            ctx.fillText(label, x + tick.offset, canvas.height - 6);
+        } else if (tick.align === "right") {
+            ctx.textAlign = "right";
+            ctx.fillText(label, x + tick.offset, canvas.height - 6);
+        } else {
+            ctx.textAlign = "center";
+            ctx.fillText(label, x + tick.offset, canvas.height - 6);
+        }
+    });
+    ctx.textAlign = "start";
+
+    seriesDefs.forEach((series, idx) => {
+        if (series.points.length < 2 || series.yMin === null || series.yMax === null) return;
+        const laneTop = padT + idx * (laneH + laneGap);
+        const laneBottom = laneTop + laneH;
+
+        const { segments, bridges } = buildSeriesSegments(series);
+        segments.forEach((segment) => {
+            drawPolyline(segment, laneTop, laneBottom, series, { lineWidth: 2, alpha: 1 });
+        });
+        bridges.forEach(({ from, to }) => {
+            drawPolyline([from, to], laneTop, laneBottom, series, {
+                lineWidth: 1.25,
+                alpha: 0.45,
+                lineDash: [4, 4]
+            });
+        });
+
+        const latest = series.points[series.points.length - 1];
+        const latestX = padL + Math.max(0, Math.min(1, (latest.ts - minTs) / windowMs)) * plotW;
+        const latestY = valueToLaneY(latest.value, series.yMin, series.yMax, laneTop, laneBottom);
+        ctx.fillStyle = series.color;
+        ctx.beginPath();
+        ctx.arc(latestX, latestY, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    const legendItems = seriesDefs.filter((series) => series.points.length >= 2);
+    legendItems.forEach((series, idx) => {
+        const x = padL + idx * 92;
+        const y = 12;
+        ctx.fillStyle = series.color;
+        ctx.fillRect(x, y - 4, 10, 2);
+        ctx.fillStyle = "rgba(239,247,255,0.97)";
+        ctx.fillText(`${series.label} lane`, x + 14, y);
+    });
+}
+
 /* ---------------- SCHUMANN ---------------- */
 async function loadSchumann() {
     const el = document.getElementById("schumann");
+    await loadGeomagneticSeries(GEOMAG_WINDOW_HOURS);
 
     try {
         const data = await fetchJson(apiUrl("/schumann-response"), { timeoutMs: 6000, retries: 0 });
@@ -3896,7 +5081,6 @@ async function loadSchumann() {
         else if (responseValue > 20) color = "#ffaa00";
 
         const schVals = historyValues(schumannHistory);
-        const schChartMax = computeChartCeiling(schVals, { fallback: 20, floor: 12, headroomRatio: 0.22, roundedStep: 2 });
         const schMax24h = Math.max(...schVals);
         const schAvg24h = schVals.reduce((sum, val) => sum + val, 0) / schVals.length;
         const schTrend = computeTrendSignal(schVals, 1.5, -1.5);
@@ -3916,31 +5100,35 @@ async function loadSchumann() {
             : "";
         renderSolarComponentStrip(componentValues);
 
-        markHealth("schumann", "ok", `Source: ${mode}`);
+        const spectrogramUnavailable = !!schumannSpectrogramState.lastError && !schumannSpectrogramState.lastImageSrc;
+        const spectrogramStale = !!schumannSpectrogramState.lastError && !!schumannSpectrogramState.lastImageSrc;
+        const schumannHealthState = (spectrogramUnavailable || spectrogramStale) ? "degraded" : "ok";
+        const schumannHealthDetail = spectrogramUnavailable
+            ? `Source: ${mode} | Spectrogram unavailable`
+            : spectrogramStale
+            ? `Source: ${mode} | Spectrogram stale`
+            : `Source: ${mode}`;
+
+        markHealth("schumann", schumannHealthState, schumannHealthDetail);
         el.innerHTML = `
             <div class="item">Response: <span style="color:${color}">${responseValue.toFixed(2)} ${escapeHtml(unit)}</span></div>
             <div class="item" style="font-size:10.4px;opacity:0.9;font-weight:620;">12h Max: ${schMax24h.toFixed(2)} | Avg: ${schAvg24h.toFixed(2)} | Trend: <span style="color:${schTrend.color};font-weight:700;">${schTrend.label}</span></div>
             <div class="item" style="font-size:10.3px;opacity:0.82;">Source: ${escapeHtml(source)} | Observed: ${escapeHtml(formatEventTime(observedAt).replace("Time: ", ""))}</div>
         `;
 
-        drawChart("schumannChart", schumannHistory, schChartMax, {
-            strokeColor: color,
+        drawSchumannCompositeChart("schumannChart", {
             windowHours: TREND_WINDOW_HOURS,
-            markers: getSchumannChartMarkers(TREND_WINDOW_HOURS),
-            xTicks: [
-                { ratio: 0, label: "-12h", align: "left", offset: 2 },
-                { ratio: 0.5, label: "-6h", align: "center", offset: 0 },
-                { ratio: 0.75, label: "-3h", align: "center", offset: 0 },
-                { ratio: 1, label: "0", align: "right", offset: -4 }
-            ],
-            bands: [
-                { min: 0, max: 20, color: "rgba(0,255,204,0.06)" },
-                { min: 20, max: 30, color: "rgba(255,170,0,0.08)" },
-                { min: 30, max: 60, color: "rgba(255,51,51,0.10)" }
-            ]
+            markers: getSchumannChartMarkers(TREND_WINDOW_HOURS)
         });
         renderGraphHealth("schumann", "schumannHealth");
-        renderSchumannSpectrogramStatus("SRI updated", "ok");
+
+        const statusLevel = spectrogramUnavailable ? "offline" : (spectrogramStale ? "degraded" : "ok");
+        const statusMessage = spectrogramUnavailable
+            ? "SRI updated; spectrogram unavailable"
+            : spectrogramStale
+            ? "SRI updated; cached spectrogram"
+            : "SRI updated";
+        renderSchumannSpectrogramStatus(statusMessage, statusLevel);
 
     } catch (err) {
         console.error("Schumann /schumann-response API error:", err);
@@ -3955,6 +5143,50 @@ async function loadSchumann() {
 }
 
 /* ---------------- QUAKES ---------------- */
+function readQuakesCache() {
+    try {
+        const raw = localStorage.getItem("quakes_cache");
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        const items = Array.isArray(parsed?.items) ? parsed.items : [];
+        if (!items.length) return null;
+        return {
+            savedAt: toNumber(parsed?.savedAt, 0) || 0,
+            items: items.slice(0, 5)
+        };
+    } catch (_) {
+        return null;
+    }
+}
+
+function writeQuakesCache(items) {
+    try {
+        const payload = Array.isArray(items) ? items.slice(0, 5) : [];
+        if (!payload.length) return;
+        localStorage.setItem("quakes_cache", JSON.stringify({
+            savedAt: Date.now(),
+            items: payload
+        }));
+    } catch (_) {
+        // cache is optional
+    }
+}
+
+function restoreQuakesFromCache(reason = "Earthquake feed unstable") {
+    const cached = readQuakesCache();
+    if (!cached) return false;
+
+    quakesItems = cached.items;
+    const ageMs = cached.savedAt ? Math.max(0, Date.now() - cached.savedAt) : Number.POSITIVE_INFINITY;
+    const ageLabel = Number.isFinite(ageMs) ? formatAge(ageMs) : "unknown age";
+    const freshnessLabel = ageMs <= QUAKES_CACHE_MAX_AGE_MS ? "cached" : "stale cached";
+
+    quakesStatus = `${reason}; showing ${freshnessLabel} snapshot (${ageLabel} old)`;
+    markHealth("quakes", "degraded", `Using ${freshnessLabel} data (${ageLabel} old)`);
+    renderQuakesPanel();
+    return true;
+}
+
 async function loadQuakes() {
     try {
         const [day, sig] = await Promise.all([
@@ -3981,12 +5213,24 @@ async function loadQuakes() {
             url: q?.properties?.url ?? "#",
             time: q?.properties?.time
         }));
+
+        if (quakesItems.length === 0 && restoreQuakesFromCache("Earthquake feed returned no entries")) {
+            return;
+        }
+
         quakesStatus = quakesItems.length > 0 ? "" : "No recent quake entries";
+        if (quakesItems.length > 0) {
+            writeQuakesCache(quakesItems);
+        }
         markHealth("quakes", quakesItems.length > 0 ? "ok" : "degraded", quakesItems.length > 0 ? "" : "No recent entries");
         renderQuakesPanel();
 
     } catch (err) {
         console.error("Earthquakes error:", err);
+        if (restoreQuakesFromCache("Earthquake feed unstable")) {
+            return;
+        }
+
         quakesStatus = quakesItems.length > 0 ? "Earthquake feed stale" : "Earthquake feed offline";
         markHealth("quakes", quakesItems.length > 0 ? "degraded" : "offline", "USGS fetch failed");
         renderQuakesPanel();
@@ -3995,6 +5239,50 @@ async function loadQuakes() {
 
 /* ---------------- TSUNAMI ---------------- */
 async function loadTsunami() {
+    function readTsunamiCache() {
+        try {
+            const raw = localStorage.getItem("tsunami_cache");
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            const items = Array.isArray(parsed?.items) ? parsed.items : [];
+            if (!items.length) return null;
+            return {
+                savedAt: toNumber(parsed?.savedAt, 0) || 0,
+                items: items.slice(0, 3)
+            };
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function writeTsunamiCache(items) {
+        try {
+            const payload = Array.isArray(items) ? items.slice(0, 3) : [];
+            if (!payload.length) return;
+            localStorage.setItem("tsunami_cache", JSON.stringify({
+                savedAt: Date.now(),
+                items: payload
+            }));
+        } catch (_) {
+            // cache is optional
+        }
+    }
+
+    function restoreTsunamiFromCache(reason = "Tsunami feed unstable") {
+        const cached = readTsunamiCache();
+        if (!cached) return false;
+
+        tsunamiItems = cached.items;
+        const ageMs = cached.savedAt ? Math.max(0, Date.now() - cached.savedAt) : Number.POSITIVE_INFINITY;
+        const ageLabel = Number.isFinite(ageMs) ? formatAge(ageMs) : "unknown age";
+        const freshnessLabel = ageMs <= TSUNAMI_CACHE_MAX_AGE_MS ? "cached" : "stale cached";
+
+        tsunamiStatus = `${reason}; showing ${freshnessLabel} snapshot (${ageLabel} old)`;
+        markHealth("tsunami", "degraded", `Using ${freshnessLabel} data (${ageLabel} old)`);
+        renderQuakesPanel();
+        return true;
+    }
+
     try {
         let data;
         let source = "proxy";
@@ -4022,12 +5310,24 @@ async function loadTsunami() {
                 };
             });
 
+        if (tsunamiItems.length === 0 && restoreTsunamiFromCache(`Tsunami source returned no alerts (${source})`)) {
+            return;
+        }
+
+        if (tsunamiItems.length > 0) {
+            writeTsunamiCache(tsunamiItems);
+        }
+
         tsunamiStatus = "";
         markHealth("tsunami", "ok", `Source: ${source}`);
         renderQuakesPanel();
 
     } catch (err) {
         console.error("Tsunami error:", err);
+        if (restoreTsunamiFromCache("Tsunami feed unavailable")) {
+            return;
+        }
+
         tsunamiStatus = tsunamiItems.length > 0 ? "Tsunami feed stale" : "Tsunami feed offline";
         markHealth("tsunami", tsunamiItems.length > 0 ? "degraded" : "offline", "Proxy + direct fetch failed");
         renderQuakesPanel();
@@ -4035,6 +5335,68 @@ async function loadTsunami() {
 }
 
 /* ---------------- VOLCANO ---------------- */
+function readVolcanoCache() {
+    try {
+        const raw = localStorage.getItem("volcano_cache");
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        const events = Array.isArray(parsed?.events) ? parsed.events : [];
+        if (!events.length) return null;
+        return {
+            savedAt: toNumber(parsed?.savedAt, 0) || 0,
+            events
+        };
+    } catch (_) {
+        return null;
+    }
+}
+
+function writeVolcanoCache(events) {
+    const cachedEvents = Array.isArray(events) ? events : [];
+    if (!cachedEvents.length) return;
+
+    volcanoCacheState.events = cachedEvents;
+    volcanoCacheState.fetchedAtMs = Date.now();
+
+    try {
+        localStorage.setItem("volcano_cache", JSON.stringify({
+            savedAt: volcanoCacheState.fetchedAtMs,
+            events: cachedEvents
+        }));
+    } catch (_) {
+        // cache is optional
+    }
+}
+
+function renderVolcanoFromCache(el, reason = "Volcano feed unstable") {
+    const memoryEvents = Array.isArray(volcanoCacheState.events) ? volcanoCacheState.events : [];
+    const memoryTs = toNumber(volcanoCacheState.fetchedAtMs, 0) || 0;
+    const persisted = readVolcanoCache();
+
+    let events = memoryEvents;
+    let savedAt = memoryTs;
+
+    if ((!events.length || !savedAt) && persisted) {
+        events = persisted.events;
+        savedAt = persisted.savedAt;
+        volcanoCacheState.events = persisted.events;
+        volcanoCacheState.fetchedAtMs = persisted.savedAt;
+    }
+
+    if (!events.length) return false;
+
+    const ageMs = savedAt ? Math.max(0, Date.now() - savedAt) : Number.POSITIVE_INFINITY;
+    const ageLabel = Number.isFinite(ageMs) ? formatAge(ageMs) : "unknown age";
+    const freshnessLabel = ageMs <= VOLCANO_CACHE_MAX_AGE_MS ? "cached" : "stale cached";
+
+    markHealth("volcano", "degraded", `${reason}; using ${freshnessLabel} data (${ageLabel} old)`);
+    setWidgetHtml(el, "volcano", `
+        <div class="item" style="font-size:10px;opacity:0.8;color:#ffd166;">${escapeHtml(reason)}. Showing ${escapeHtml(freshnessLabel)} volcano snapshot (${escapeHtml(ageLabel)} old).</div>
+        ${buildVolcanoWidgetBody(events)}
+    `);
+    return true;
+}
+
 async function loadVolcano() {
     const el = document.getElementById("volcano");
     try {
@@ -4042,46 +5404,25 @@ async function loadVolcano() {
         const events = Array.isArray(data?.events) ? data.events : [];
 
         if (events.length === 0) {
+            if (renderVolcanoFromCache(el, "Volcano feed returned no active events")) {
+                return;
+            }
+
             markHealth("volcano", "degraded", "No active events");
             setWidgetHtml(el, "volcano", "No active volcano events");
             return;
         }
 
+        writeVolcanoCache(events);
         markHealth("volcano", "ok");
-        const visibleEvents = events.slice(0, 5);
-        const overflowHtml = events.length > visibleEvents.length
-            ? `<div class="item" style="font-size:10px;opacity:0.72;color:#9fc5e8;">+${events.length - visibleEvents.length} more volcano events</div>`
-            : "";
-
-        setWidgetHtml(el, "volcano", `${visibleEvents.map((v) => {
-            const geometries = Array.isArray(v?.geometry) ? v.geometry : [];
-            const latest = geometries.length > 0 ? geometries[geometries.length - 1] : null;
-            const first = geometries.length > 0 ? geometries[0] : null;
-            const startedTs = parseTimeMs(first?.date);
-            const latestTs = parseTimeMs(latest?.date);
-            const activeDays = (startedTs && latestTs) ? Math.max(1, Math.round((latestTs - startedTs) / 86400000)) : null;
-            const categories = Array.isArray(v?.categories) ? v.categories.map((c) => c?.title).filter(Boolean).join(", ") : "Volcanoes";
-            const sourceUrl = Array.isArray(v?.sources) && v.sources[0]?.url ? safeHref(v.sources[0].url) : "#";
-            const coords = Array.isArray(latest?.coordinates) ? latest.coordinates : [];
-            const loc = coords.length >= 2 ? `${toNumber(coords[1], 0).toFixed(2)}, ${toNumber(coords[0], 0).toFixed(2)}` : "N/A";
-
-            return `
-                <div class="neo-item">
-                    <div class="neo-top">
-                        <div class="neo-name">${escapeHtml(v?.title ?? "Unnamed event")}</div>
-                        <span class="neo-badge neo-close">${escapeHtml(v?.closed ? "Closed" : "Active")}</span>
-                    </div>
-                    <div class="neo-meta">Category: ${escapeHtml(categories)}</div>
-                    <div class="neo-meta">Start: ${escapeHtml(formatEventTime(first?.date).replace("Time: ", ""))} | Latest: ${escapeHtml(formatEventTime(latest?.date).replace("Time: ", ""))}</div>
-                    <div class="neo-meta">Active Days: ${activeDays !== null ? activeDays : "N/A"} | Coordinates: ${escapeHtml(loc)}</div>
-                    <div class="neo-meta">Pyroclastic Flow Rate: N/A (not provided by EONET)</div>
-                    <div class="neo-meta"><a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" style="color:#9fc5e8;text-decoration:none;">Source</a></div>
-                </div>
-            `;
-        }).join("")}${overflowHtml}`);
+        setWidgetHtml(el, "volcano", buildVolcanoWidgetBody(events));
 
     } catch (err) {
         console.error("Volcano error:", err);
+        if (renderVolcanoFromCache(el, "Volcano feed unavailable")) {
+            return;
+        }
+
         markHealth("volcano", "offline", "EONET unavailable");
         setWidgetHtml(el, "volcano", "Offline");
     }
@@ -4124,38 +5465,24 @@ async function loadNEOs() {
         const nearest = sortNeosByDistance(asteroids).slice(0, 3);
 
         if (nearest.length === 0) {
+            if (renderNeoFromCache(el, `NEO source returned no objects (${source})`)) {
+                return;
+            }
+
             markHealth("neos", "degraded", `No objects (${source})`);
             setWidgetHtml(el, "neos", "No tracked NEOs today");
             return;
         }
 
-        try {
-            localStorage.setItem("neos_cache", JSON.stringify({
-                savedAt: Date.now(),
-                asteroids: nearest
-            }));
-        } catch (_) {
-            // cache is optional
-        }
+        writeNeoCache(nearest);
 
         markHealth("neos", "ok", `Source: ${source} | Showing nearest 3`);
         setWidgetHtml(el, "neos", renderNeoItems(nearest, 3));
 
     } catch (err) {
         console.error("NEO error:", err);
-        try {
-            const cachedRaw = localStorage.getItem("neos_cache");
-            if (cachedRaw) {
-                const cached = JSON.parse(cachedRaw);
-                const asteroids = Array.isArray(cached?.asteroids) ? cached.asteroids : [];
-                if (asteroids.length > 0) {
-                    markHealth("neos", "degraded", "Rate-limited; using cached data");
-                    setWidgetHtml(el, "neos", renderNeoItems(sortNeosByDistance(asteroids).slice(0, 3), 3));
-                    return;
-                }
-            }
-        } catch (_) {
-            // ignore cache parse errors
+        if (renderNeoFromCache(el, "NEO source unstable")) {
+            return;
         }
 
         markHealth("neos", "offline", `NEO fetch failed: ${err?.message || "unknown error"}`);
@@ -4164,6 +5491,73 @@ async function loadNEOs() {
 }
 
 /* ---------------- WEATHER ---------------- */
+function renderAlertsWidgetBody(displayAlerts, statusLine) {
+    return `${displayAlerts.slice(0, 7).map((a) =>
+        `<div class="item">
+        <a href="${safeHref(a?.id)}" target="_blank" rel="noopener noreferrer" style="color:#ffaa00; text-decoration:none;">
+        ${escapeHtml(a?.properties?.event ?? "Weather Alert")} <br>
+        <span style="font-size: 10px; color: #cccccc; font-weight: normal;">${escapeHtml(a?.properties?.areaDesc ?? "Unknown area")}</span>
+        </a></div>`
+    ).join("")}${statusLine}`;
+}
+
+function readAlertsCache() {
+    try {
+        const raw = localStorage.getItem("alerts_cache");
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        const features = Array.isArray(parsed?.features) ? parsed.features : [];
+        if (!features.length) return null;
+        return {
+            savedAt: toNumber(parsed?.savedAt, 0) || 0,
+            features
+        };
+    } catch (_) {
+        return null;
+    }
+}
+
+function writeAlertsCache(features) {
+    try {
+        const payload = Array.isArray(features) ? features.slice(0, 64) : [];
+        if (!payload.length) return;
+        localStorage.setItem("alerts_cache", JSON.stringify({
+            savedAt: Date.now(),
+            features: payload
+        }));
+    } catch (_) {
+        // cache is optional
+    }
+}
+
+function renderAlertsFromCache(el, reason = "NWS feed unavailable") {
+    const cached = readAlertsCache();
+    if (!cached) return false;
+
+    const ranked = sortNwsAlerts(cached.features);
+    const displayAlerts = alertsCriticalOnly ? ranked.filter(isCriticalAlert) : ranked;
+    const ageMs = cached.savedAt ? Math.max(0, Date.now() - cached.savedAt) : Number.POSITIVE_INFINITY;
+    const ageLabel = Number.isFinite(ageMs) ? formatAge(ageMs) : "unknown age";
+    const freshnessLabel = ageMs <= ALERTS_CACHE_MAX_AGE_MS ? "cached" : "stale cached";
+    const statusLine = alertFeedStatusLine({ source: "cache-stale", updated: cached.savedAt, stale: true });
+
+    if (displayAlerts.length === 0) {
+        const emptyMsg = alertsCriticalOnly
+            ? "No critical TX alerts in cached snapshot"
+            : "No active TX alerts in cached snapshot";
+        markHealth("alerts", "degraded", `${reason}; ${freshnessLabel} snapshot (${ageLabel} old)`);
+        setWidgetHtml(el, "alerts", `<div class="item">${emptyMsg}</div>${statusLine}`);
+        return true;
+    }
+
+    markHealth("alerts", "degraded", `${reason}; using ${freshnessLabel} alerts (${ageLabel} old)`);
+    setWidgetHtml(el, "alerts", `
+        <div class="item" style="font-size:10px;opacity:0.8;color:#ffd166;">${escapeHtml(reason)}. Showing ${escapeHtml(freshnessLabel)} alert snapshot (${escapeHtml(ageLabel)} old).</div>
+        ${renderAlertsWidgetBody(displayAlerts, statusLine)}
+    `);
+    return true;
+}
+
 async function loadAlerts() {
     const el = document.getElementById("alerts");
     try {
@@ -4177,6 +5571,12 @@ async function loadAlerts() {
         const displayAlerts = alertsCriticalOnly ? ranked.filter(isCriticalAlert) : ranked;
         const statusLine = alertFeedStatusLine(data);
 
+        if (ranked.length > 0) {
+            writeAlertsCache(ranked);
+        } else if (renderAlertsFromCache(el, "NWS feed returned no alerts")) {
+            return;
+        }
+
         if (displayAlerts.length === 0) {
             if (ranked.length > 0 && alertsCriticalOnly) {
                 markHealth("alerts", "degraded", "Critical-only mode: no critical alerts");
@@ -4189,16 +5589,14 @@ async function loadAlerts() {
         }
 
         markHealth("alerts", "ok", alertsCriticalOnly ? "Critical-only mode" : "All alerts mode");
-        setWidgetHtml(el, "alerts", `${displayAlerts.slice(0,7).map(a =>
-            `<div class="item">
-            <a href="${safeHref(a?.id)}" target="_blank" rel="noopener noreferrer" style="color:#ffaa00; text-decoration:none;">
-            ${escapeHtml(a?.properties?.event ?? "Weather Alert")} <br>
-            <span style="font-size: 10px; color: #cccccc; font-weight: normal;">${escapeHtml(a?.properties?.areaDesc ?? "Unknown area")}</span>
-            </a></div>`
-        ).join("")}${statusLine}`);
+        setWidgetHtml(el, "alerts", renderAlertsWidgetBody(displayAlerts, statusLine));
 
     } catch (err) {
         console.error("TX alerts error:", err);
+        if (renderAlertsFromCache(el, "NWS feed unavailable")) {
+            return;
+        }
+
         markHealth("alerts", "offline", "NWS alerts fetch failed");
         setWidgetHtml(el, "alerts", "Offline");
     }
@@ -4548,6 +5946,21 @@ async function initializeDashboard() {
     await loadRuntimeConfig();
     await runStartupChecks();
     await restoreTrendHistory();
+    await hydrateCorrelationEventsFromBackend();
+
+    try {
+        const savedView = localStorage.getItem(SCHUMANN_VIEW_KEY);
+        if (savedView === "generated" || savedView === "tomsk" || savedView === "chart" || savedView === "response") {
+            schumannViewMode = savedView;
+        } else if (savedView === "spectrogram") {
+            schumannViewMode = "tomsk";
+        }
+    } catch (_) {
+        schumannViewMode = "chart";
+    }
+
+    applySchumannViewMode(schumannViewMode);
+
     startBackgroundRotation();
     initRadarInteractions();
     renderHeartbeat();
@@ -4586,9 +5999,35 @@ function manualRefresh() {
     loadRadarSnapshot();
 }
 
+function clearWidgetSnapshotCaches() {
+    const cacheKeys = [
+        "quakes_cache",
+        "volcano_cache",
+        "neos_cache",
+        "tsunami_cache",
+        "alerts_cache",
+        "trend_history",
+        "schumann_sg_cache",
+        "schumann_sg_cache_ts",
+        "schumann_sg_cache_generated",
+        "schumann_sg_cache_generated_ts",
+        "schumann_sg_cache_image",
+        "schumann_sg_cache_image_ts"
+    ];
+
+    cacheKeys.forEach((key) => {
+        try {
+            localStorage.removeItem(key);
+        } catch (_) {
+            // localStorage clearing is best-effort
+        }
+    });
+}
+
 // Button hook
 document.getElementById("refreshBtn").addEventListener("click", (e) => {
     if (e.shiftKey) {
+        clearWidgetSnapshotCaches();
         const hardReloadUrl = new URL(window.location.href);
         hardReloadUrl.searchParams.set("_hardReload", String(Date.now()));
         window.location.replace(hardReloadUrl.toString());
@@ -4610,6 +6049,59 @@ if (alertsModeBtn) {
         loadAlerts();
     });
 }
+
+const schumannViewChartBtn = document.getElementById("schumannViewChartBtn");
+if (schumannViewChartBtn) {
+    schumannViewChartBtn.addEventListener("click", () => {
+        applySchumannViewMode("chart");
+        try {
+            localStorage.setItem(SCHUMANN_VIEW_KEY, "chart");
+        } catch (_) {
+            // persistence is optional
+        }
+    });
+}
+
+const schumannViewGeneratedBtn = document.getElementById("schumannViewGeneratedBtn");
+if (schumannViewGeneratedBtn) {
+    schumannViewGeneratedBtn.addEventListener("click", () => {
+        applySchumannViewMode("generated");
+        try {
+            localStorage.setItem(SCHUMANN_VIEW_KEY, "generated");
+        } catch (_) {
+            // persistence is optional
+        }
+    });
+}
+
+const schumannViewTomskBtn = document.getElementById("schumannViewTomskBtn");
+if (schumannViewTomskBtn) {
+    schumannViewTomskBtn.addEventListener("click", () => {
+        applySchumannViewMode("tomsk");
+        try {
+            localStorage.setItem(SCHUMANN_VIEW_KEY, "tomsk");
+        } catch (_) {
+            // persistence is optional
+        }
+    });
+}
+
+
+
+// Page-visibility wake-up: re-fetch all feeds when page resumes after >5 min hidden
+// (covers OS sleep, lid-close, display-off inactivity, screen-saver)
+let _lastPageVisibleMs = Date.now();
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+        _lastPageVisibleMs = Date.now();
+    } else {
+        const awayMs = Date.now() - _lastPageVisibleMs;
+        if (awayMs > 5 * 60 * 1000) {
+            console.info(`Dashboard resumed after ${Math.round(awayMs / 60000)}min away; refreshing all feeds.`);
+            manualRefresh();
+        }
+    }
+});
 </script>
 </body>
 </html>

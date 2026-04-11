@@ -14,6 +14,7 @@
   "schumann": {
     "highSRIThreshold": 40,
     "minCacheMs": 300000,
+    "allowInsecureTomsk": false,
     "spectrogramTopHz": 40,
     "spectrogramBottomHz": 0,
     "spectrogramPlotLeftRatio": 0.039,

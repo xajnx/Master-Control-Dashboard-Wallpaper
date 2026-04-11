@@ -6,9 +6,14 @@ import os
 import json
 from datetime import date, datetime, timezone
 from urllib.error import URLError, HTTPError
+import ssl
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 from schumann_adapter import adapt_schumann_payload
+import numpy as np
+from scipy import signal
+from PIL import Image, ImageDraw, ImageFont
+import io as io_module
 
 app = Flask(__name__)
 
@@ -32,15 +37,25 @@ start_time = time.time()
 neo_cache = {}
 tsunami_cache = {"cached_at": 0, "payload": None}
 schumann_cache = {"cached_at": 0, "payload": None}
+solar_cache = {"cached_at": 0, "payload": None}
 weather_alerts_cache = {}
 weather_current_cache = {}
 spectrogram_cache = {}
 NEO_CACHE_TTL_SECONDS = 6 * 3600
 TSUNAMI_CACHE_TTL_SECONDS = 120
 SCHUMANN_DERIVED_TTL_SECONDS = 300
+SOLAR_COMPOSITE_CACHE_TTL_SECONDS = 60
 WEATHER_ALERTS_CACHE_TTL_SECONDS = 60
 WEATHER_CURRENT_CACHE_TTL_SECONDS = 60
 SPECTROGRAM_PROXY_CACHE_TTL_SECONDS = 300
+generated_spectrogram_cache = {"cached_at": 0, "payload": None}
+SPECTROGRAM_GENERATED_CACHE_TTL_SECONDS = 300
+
+SPECTROGRAM_INSECURE_HOST_ALLOWLIST = {
+    host.strip().lower()
+    for host in os.environ.get("SPECTROGRAM_INSECURE_HOST_ALLOWLIST", "sosrff.tsu.ru").split(",")
+    if host.strip()
+}
 LUNAR_DISTANCE_KM = 384400
 NEAR_MISS_LD_THRESHOLD = 0.75
 CLOSE_LD_THRESHOLD = 3.0
@@ -121,7 +136,7 @@ def fetch_json_with_metadata(url, timeout=8, headers=None):
         raise RuntimeError("Upstream returned invalid JSON") from err
 
 
-def fetch_bytes(url, timeout=12, headers=None):
+def fetch_bytes(url, timeout=12, headers=None, verify_ssl=True):
     request_headers = {
         "User-Agent": NWS_USER_AGENT,
         "Accept": "image/*,*/*;q=0.8"
@@ -131,8 +146,13 @@ def fetch_bytes(url, timeout=12, headers=None):
 
     req = Request(url, headers=request_headers)
 
+    context = None
+    parsed = urlparse(url)
+    if parsed.scheme == "https" and not verify_ssl:
+        context = ssl._create_unverified_context()
+
     try:
-        with urlopen(req, timeout=timeout) as resp:
+        with urlopen(req, timeout=timeout, context=context) as resp:
             response_headers = resp.headers
             payload = resp.read()
             return {
@@ -162,6 +182,19 @@ def is_allowed_remote_image_url(raw_url):
         return False
 
     return True
+
+
+def is_allowed_insecure_image_host(raw_url):
+    try:
+        parsed = urlparse(str(raw_url or "").strip())
+    except ValueError:
+        return False
+
+    if parsed.scheme != "https":
+        return False
+
+    hostname = (parsed.hostname or "").lower()
+    return hostname in SPECTROGRAM_INSECURE_HOST_ALLOWLIST
 
 
 def to_float(value):
@@ -445,7 +478,7 @@ def get_weather_current(point):
         }, 502
 
 
-def get_spectrogram_image(source_url, force_refresh=False, ttl_seconds=SPECTROGRAM_PROXY_CACHE_TTL_SECONDS):
+def get_spectrogram_image(source_url, force_refresh=False, ttl_seconds=SPECTROGRAM_PROXY_CACHE_TTL_SECONDS, allow_insecure=False):
     if not is_allowed_remote_image_url(source_url):
         return None, "Unsupported spectrogram source URL", 400, False
 
@@ -457,26 +490,336 @@ def get_spectrogram_image(source_url, force_refresh=False, ttl_seconds=SPECTROGR
     if cached and not force_refresh and (now - cached.get("cached_at", 0) <= ttl):
         return cached, None, 200, False
 
+    insecure_used = False
     try:
-        fetched = fetch_bytes(key, timeout=15)
-        payload = {
-            "cached_at": now,
-            "content_type": fetched.get("content_type") or "image/jpeg",
-            "bytes": fetched.get("bytes") or b"",
-            "stale": False
-        }
-        spectrogram_cache[key] = payload
-        if len(spectrogram_cache) > 16:
-            ordered = sorted(spectrogram_cache.items(), key=lambda item: item[1].get("cached_at", 0), reverse=True)
-            spectrogram_cache.clear()
-            spectrogram_cache.update(dict(ordered[:16]))
-        return payload, None, 200, False
+        fetched = fetch_bytes(key, timeout=15, verify_ssl=True)
     except RuntimeError as err:
-        if cached:
-            stale_payload = dict(cached)
-            stale_payload["stale"] = True
-            return stale_payload, str(err), 200, True
-        return None, str(err), 502, False
+        should_try_insecure = (
+            allow_insecure
+            and is_allowed_insecure_image_host(key)
+            and "CERTIFICATE_VERIFY_FAILED" in str(err)
+        )
+        if not should_try_insecure:
+            if cached:
+                stale_payload = dict(cached)
+                stale_payload["stale"] = True
+                stale_payload["insecure_tls"] = False
+                return stale_payload, str(err), 200, True
+            return None, str(err), 502, False
+
+        try:
+            fetched = fetch_bytes(key, timeout=15, verify_ssl=False)
+            insecure_used = True
+        except RuntimeError as insecure_err:
+            if cached:
+                stale_payload = dict(cached)
+                stale_payload["stale"] = True
+                stale_payload["insecure_tls"] = False
+                return stale_payload, str(insecure_err), 200, True
+            return None, str(insecure_err), 502, False
+
+    payload = {
+        "cached_at": now,
+        "content_type": fetched.get("content_type") or "image/jpeg",
+        "bytes": fetched.get("bytes") or b"",
+        "stale": False,
+        "insecure_tls": insecure_used
+    }
+    spectrogram_cache[key] = payload
+    if len(spectrogram_cache) > 16:
+        ordered = sorted(spectrogram_cache.items(), key=lambda item: item[1].get("cached_at", 0), reverse=True)
+        spectrogram_cache.clear()
+        spectrogram_cache.update(dict(ordered[:16]))
+    return payload, None, 200, False
+
+
+def get_goes_magnetometer_data(satellite="primary", window="1-day"):
+    """Fetch real-time GOES magnetometer data from NOAA SWPC.
+    GOES fields: He (East), Hp (Parallel), Hn (North), total (magnitude), arcjet_flag.
+    """
+    url = f"https://services.swpc.noaa.gov/json/goes/{satellite}/magnetometers-{window}.json"
+    try:
+        data = fetch_json(url, timeout=10)
+        if not isinstance(data, list) or len(data) == 0:
+            return None, "No magnetometer data returned"
+        return data, None
+    except RuntimeError as err:
+        return None, str(err)
+
+
+def load_schumann_sri_for_chart(hours=24):
+    """Load recent SRI history from trend_history.json scoped to the last N hours."""
+    try:
+        if not os.path.exists(TREND_HISTORY_PATH):
+            return []
+        with open(TREND_HISTORY_PATH, "r", encoding="utf-8") as fh:
+            raw = json.load(fh)
+        cutoff_ms = (time.time() - hours * 3600) * 1000
+        points = [
+            p for p in raw.get("schumann", [])
+            if isinstance(p, dict)
+            and to_int(p.get("ts")) is not None
+            and to_float(p.get("value")) is not None
+            and to_int(p.get("ts")) >= cutoff_ms
+        ]
+        points.sort(key=lambda p: p["ts"])
+        return points
+    except Exception:
+        return []
+
+
+def load_goes_series_for_chart(hours=24, component="Hn"):
+    """Load recent GOES magnetometer points for charting in the last N hours."""
+    cutoff_ms = (time.time() - max(1, to_float(hours) or 24) * 3600) * 1000
+
+    mag_data, mag_err = get_goes_magnetometer_data("primary", "1-day")
+    source = "primary"
+    if mag_err or not mag_data:
+        mag_data, mag_err = get_goes_magnetometer_data("secondary", "1-day")
+        source = "secondary"
+
+    if mag_err or not mag_data:
+        return [], mag_err or "No GOES data", source
+
+    points = []
+    for entry in mag_data:
+        if not isinstance(entry, dict) or entry.get("arcjet_flag"):
+            continue
+        val = to_float(entry.get(component))
+        tag = str(entry.get("time_tag") or "").strip()
+        if val is None or not tag:
+            continue
+        try:
+            ts_ms = datetime.fromisoformat(tag.replace("Z", "+00:00")).timestamp() * 1000
+        except ValueError:
+            continue
+        if ts_ms < cutoff_ms:
+            continue
+        points.append({
+            "ts": int(ts_ms),
+            "value": val
+        })
+
+    points.sort(key=lambda p: p["ts"])
+    return points, None, source
+
+
+def generate_spectrogram_from_magnetometer(mag_data, component="Hn"):
+    """Single-series GOES chart — delegates to dual chart with no SRI data."""
+    return generate_dual_geomagnetic_chart(mag_data, sri_points=[], component=component)
+
+
+def generate_dual_geomagnetic_chart(mag_data, sri_points=None, component="Hn"):
+    """Render a dual-series 24-hour line chart (JPEG) of GOES Hn + Schumann SRI.
+
+    Left Y-axis: GOES Hn nanoTeslas (teal line).
+    Right Y-axis: SRI units (amber line), drawn only when sri_points is non-empty.
+    X-axis: shared 24-hour time window.
+    """
+    try:
+        from PIL import Image as PilImage, ImageDraw as PilDraw
+
+        if sri_points is None:
+            sri_points = []
+
+        # --- Extract GOES values ---
+        goes_vals, goes_ts_ms = [], []
+        now_ms = time.time() * 1000
+        cutoff_ms = now_ms - 24 * 3600 * 1000
+        for entry in (mag_data or []):
+            if not isinstance(entry, dict) or entry.get("arcjet_flag"):
+                continue
+            val = to_float(entry.get(component))
+            tag = entry.get("time_tag", "")
+            if val is None or not tag:
+                continue
+            try:
+                # Parse ISO timestamp to ms
+                from datetime import datetime, timezone as tz
+                dt = datetime.strptime(tag[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=tz.utc)
+                ts_ms = dt.timestamp() * 1000
+            except Exception:
+                ts_ms = now_ms  # fallback: put at end
+            if ts_ms >= cutoff_ms:
+                goes_vals.append(val)
+                goes_ts_ms.append(ts_ms)
+
+        has_goes = len(goes_vals) >= 10
+        has_sri = len(sri_points) >= 5
+
+        if not has_goes and not has_sri:
+            return None, "No data available for chart"
+
+        # --- Chart layout ---
+        W, H = 600, 220
+        ML = 52   # left margin (GOES Y labels)
+        MR = 52   # right margin (SRI Y labels, or 12 if no SRI)
+        MT = 18   # top
+        MB = 36   # bottom (time labels)
+        if not has_sri:
+            MR = 12
+        PW = W - ML - MR
+        PH = H - MT - MB
+
+        # --- Shared X: 0..1 = cutoff_ms..now_ms ---
+        x_span = max(now_ms - cutoff_ms, 1)
+
+        def t_to_x(ts_ms_val):
+            ratio = max(0.0, min(1.0, (ts_ms_val - cutoff_ms) / x_span))
+            return ML + int(ratio * PW)
+
+        def norm_y(v, vlo, vhi, top, bottom):
+            ratio = (v - vlo) / max(vhi - vlo, 1e-9)
+            return bottom - int(ratio * (bottom - top))
+
+        # --- Y ranges ---
+        if has_goes:
+            g_arr = np.array(goes_vals, dtype=np.float64)
+            gmin, gmax = float(g_arr.min()), float(g_arr.max())
+            gpad = max((gmax - gmin) * 0.12, 0.5)
+            g_lo, g_hi = gmin - gpad, gmax + gpad
+        else:
+            g_lo, g_hi = -1, 1
+
+        if has_sri:
+            sri_vals_arr = np.array([to_float(p["value"]) for p in sri_points], dtype=np.float64)
+            sri_ts_arr = np.array([to_int(p["ts"]) for p in sri_points], dtype=np.float64)
+            smin, smax = float(sri_vals_arr.min()), float(sri_vals_arr.max())
+            spad = max((smax - smin) * 0.12, 0.5)
+            s_lo, s_hi = smin - spad, smax + spad
+
+        # --- Colors ---
+        BG      = (22, 24, 32)
+        GRID    = (42, 48, 62)
+        GOES_C  = (0, 210, 180)      # teal
+        SRI_C   = (255, 185, 50)     # amber
+        ZERO_C  = (65, 75, 95)
+        TEXT    = (150, 162, 178)
+        HDR     = (200, 210, 220)
+
+        img = PilImage.new("RGB", (W, H), BG)
+        draw = PilDraw.Draw(img)
+
+        top_px, bot_px = MT, MT + PH
+
+        # --- Horizontal grid + GOES Y labels (left) ---
+        n_yticks = 5
+        for i in range(n_yticks + 1):
+            frac = i / n_yticks
+            y = bot_px - int(frac * PH)
+            draw.line([(ML, y), (ML + PW, y)], fill=GRID, width=1)
+            if has_goes:
+                lv = g_lo + (g_hi - g_lo) * frac
+                lbl = f"{lv:+.1f}" if abs(lv) >= 0.05 else "0"
+                draw.text((2, y - 6), lbl, fill=GOES_C if has_goes else TEXT)
+
+        # SRI Y labels (right axis)
+        if has_sri:
+            for i in range(n_yticks + 1):
+                frac = i / n_yticks
+                sv = s_lo + (s_hi - s_lo) * frac
+                y = bot_px - int(frac * PH)
+                lbl = f"{sv:.1f}"
+                draw.text((ML + PW + 3, y - 6), lbl, fill=SRI_C)
+
+        # Zero line for GOES if crosses zero
+        if has_goes and g_lo < 0 < g_hi:
+            zy = norm_y(0, g_lo, g_hi, top_px, bot_px)
+            draw.line([(ML, zy), (ML + PW, zy)], fill=ZERO_C, width=1)
+
+        # --- Vertical grid + time labels every 6h ---
+        for h_offset in range(0, 25, 6):
+            ts_mark = cutoff_ms + h_offset * 3600 * 1000
+            xm = t_to_x(ts_mark)
+            draw.line([(xm, MT), (xm, bot_px)], fill=GRID, width=1)
+            lbl = f"-{24 - h_offset}h" if h_offset < 24 else "Now"
+            draw.text((xm - 10, bot_px + 4), lbl, fill=TEXT)
+
+        # --- Plot GOES line ---
+        if has_goes:
+            pts = [
+                (t_to_x(ts), norm_y(v, g_lo, g_hi, top_px, bot_px))
+                for ts, v in zip(goes_ts_ms, goes_vals)
+            ]
+            if len(pts) > 1:
+                draw.line(pts, fill=GOES_C, width=2)
+
+        # --- Plot SRI line ---
+        if has_sri:
+            sri_pts = [
+                (t_to_x(float(ts)), norm_y(float(v), s_lo, s_hi, top_px, bot_px))
+                for ts, v in zip(sri_ts_arr, sri_vals_arr)
+                if float(ts) >= cutoff_ms
+            ]
+            if len(sri_pts) > 1:
+                draw.line(sri_pts, fill=SRI_C, width=2)
+
+        # --- Border ---
+        draw.rectangle([ML, MT, ML + PW, bot_px], outline=GRID, width=1)
+
+        # --- Header ---
+        header_parts = []
+        if has_goes:
+            header_parts.append(f"GOES Hn nT  min {gmin:+.1f}  max {gmax:+.1f}")
+        if has_sri:
+            header_parts.append(f"SRI  min {smin:.1f}  max {smax:.1f}")
+        draw.text((ML, 2), "  |  ".join(header_parts), fill=HDR)
+
+        # --- Legend dots ---
+        if has_goes:
+            draw.ellipse([(ML, 2), (ML + 6, 8)], fill=GOES_C)
+        if has_sri:
+            lx = ML + (80 if has_goes else 0)
+            draw.ellipse([(lx, 2), (lx + 6, 8)], fill=SRI_C)
+
+        output = io_module.BytesIO()
+        img.save(output, format="JPEG", quality=88)
+        return output.getvalue(), None
+
+    except Exception as err:
+        return None, f"Chart generation failed: {err}"
+
+
+def get_generated_spectrogram(force_refresh=False, ttl_seconds=SPECTROGRAM_GENERATED_CACHE_TTL_SECONDS):
+    """Fetch NOAA GOES magnetometer data and generate spectrogram, with primary/secondary fallback."""
+    now = time.time()
+    if (generated_spectrogram_cache.get("payload")
+            and not force_refresh
+            and (now - generated_spectrogram_cache.get("cached_at", 0) <= ttl_seconds)):
+        return generated_spectrogram_cache["payload"], None, 200
+
+    # Try primary GOES satellite first, fall back to secondary
+    mag_data, error = get_goes_magnetometer_data("primary", "1-day")
+    if error:
+        mag_data, error = get_goes_magnetometer_data("secondary", "1-day")
+
+    if error or not mag_data:
+        if generated_spectrogram_cache.get("payload"):
+            stale = dict(generated_spectrogram_cache["payload"])
+            stale["stale"] = True
+            return stale, error or "No data available", 200
+        return None, error or "Unable to fetch magnetometer data", 502
+
+    spec_bytes, gen_error = generate_spectrogram_from_magnetometer(mag_data, component="Hn")
+
+    if gen_error or not spec_bytes:
+        if generated_spectrogram_cache.get("payload"):
+            stale = dict(generated_spectrogram_cache["payload"])
+            stale["stale"] = True
+            return stale, gen_error or "Generation failed", 200
+        return None, gen_error or "Failed to generate spectrogram", 502
+
+    payload = {
+        "cached_at": now,
+        "bytes": spec_bytes,
+        "content_type": "image/jpeg",
+        "stale": False,
+        "source": "noaa_goes",
+        "component": "Hn"
+    }
+    generated_spectrogram_cache["cached_at"] = now
+    generated_spectrogram_cache["payload"] = payload
+    return payload, None, 200
 
 
 def normalize_history_points(raw_points, max_points=5000):
@@ -504,6 +847,7 @@ def make_history_payload(raw):
         "kp": normalize_history_points(raw.get("kp"), max_points=10000),
         "schumann": normalize_history_points(raw.get("schumann"), max_points=10000),
         "solar_wind": normalize_history_points(raw.get("solar_wind"), max_points=10000),
+        "elf_observations": normalize_history_points(raw.get("elf_observations"), max_points=10000),
     }
 
 
@@ -646,6 +990,133 @@ def latest_noaa_xray_flux():
     if best:
         return best
     raise RuntimeError("NOAA X-ray payload missing numeric value")
+
+
+def latest_gfz_kp_value():
+    url = "https://kp.gfz.de/app/files/Kp_ap_Ap_SN_F107_nowcast.txt"
+    req = Request(url, headers={
+        "User-Agent": NWS_USER_AGENT,
+        "Accept": "text/plain, */*;q=0.8"
+    })
+
+    try:
+        with urlopen(req, timeout=10) as resp:
+            payload = resp.read().decode("utf-8", errors="replace")
+    except HTTPError as err:
+        raise RuntimeError(f"GFZ HTTP {err.code}") from err
+    except URLError as err:
+        raise RuntimeError(f"GFZ network error: {err.reason}") from err
+
+    rows = []
+    for line in payload.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if len(parts) < 15:
+            continue
+        rows.append(parts)
+
+    if not rows:
+        raise RuntimeError("GFZ Kp payload missing data rows")
+
+    # Each row contains Kp1..Kp8 (3-hour bins) for one UTC day.
+    # Prefer the latest non-negative Kp bin in the most recent day.
+    for parts in reversed(rows):
+        year = to_int(parts[0])
+        month = to_int(parts[1])
+        day = to_int(parts[2])
+        if not (year and month and day):
+            continue
+
+        kp_bins = []
+        for idx in range(8):
+            kp_value = to_float(parts[7 + idx])
+            kp_bins.append(kp_value)
+
+        for idx in range(7, -1, -1):
+            kp_value = kp_bins[idx]
+            if kp_value is None or kp_value < 0:
+                continue
+            hour = idx * 3
+            observed_at = datetime(year, month, day, hour, 0, 0, tzinfo=timezone.utc).isoformat()
+            return kp_value, observed_at
+
+    raise RuntimeError("GFZ Kp payload missing numeric value")
+
+
+def normalize_observed_time(text):
+    if not text:
+        return datetime.now(timezone.utc).isoformat()
+
+    raw = str(text).strip().replace(" ", "T")
+    if raw.endswith("Z"):
+        return raw
+    if "+" in raw[10:] or raw.endswith("00:00"):
+        return raw
+
+    # NOAA/GFZ timestamps are UTC but often lack explicit timezone.
+    return f"{raw}Z"
+
+
+def get_solar_composite(force_refresh=False):
+    now = time.time()
+    cached = solar_cache.get("payload")
+    if (not force_refresh) and cached and (now - solar_cache.get("cached_at", 0) <= SOLAR_COMPOSITE_CACHE_TTL_SECONDS):
+        return dict(cached)
+
+    errors = []
+
+    kp_value = None
+    kp_time = ""
+    kp_source = ""
+    fallback_used = False
+
+    try:
+        kp_value, kp_time = latest_noaa_kp_value()
+        kp_source = "noaa-swpc-kp"
+    except RuntimeError as err:
+        errors.append(str(err))
+        try:
+            kp_value, kp_time = latest_gfz_kp_value()
+            kp_source = "gfz-kp-nowcast"
+            fallback_used = True
+        except RuntimeError as gfz_err:
+            errors.append(str(gfz_err))
+
+    if kp_value is None:
+        raise RuntimeError("Unable to fetch Kp from NOAA or GFZ")
+
+    plasma_density = None
+    plasma_time = ""
+    try:
+        plasma_density, plasma_time = latest_noaa_plasma_density()
+    except RuntimeError as err:
+        errors.append(str(err))
+
+    xray_flux = None
+    xray_time = ""
+    try:
+        xray_flux, xray_time = latest_noaa_xray_flux()
+    except RuntimeError as err:
+        errors.append(str(err))
+
+    payload = {
+        "kp": round(float(kp_value), 2),
+        "observed_at": normalize_observed_time(kp_time),
+        "kp_source": kp_source,
+        "fallback_used": fallback_used,
+        "plasma_density": None if plasma_density is None else round(float(plasma_density), 2),
+        "plasma_observed_at": normalize_observed_time(plasma_time) if plasma_time else "",
+        "xray_flux": None if xray_flux is None else float(xray_flux),
+        "xray_observed_at": normalize_observed_time(xray_time) if xray_time else "",
+        "component_errors": errors,
+        "fetched_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    solar_cache["cached_at"] = now
+    solar_cache["payload"] = payload
+    return dict(payload)
 
 
 def derive_schumann_response():
@@ -906,9 +1377,16 @@ def spectrogram_proxy():
     source = (request.args.get("source") or "").strip()
     force_raw = normalize_text(request.args.get("force") or "0")
     force_refresh = force_raw in {"1", "true", "yes", "on"}
+    insecure_raw = normalize_text(request.args.get("insecure") or "0")
+    allow_insecure = insecure_raw in {"1", "true", "yes", "on"}
     ttl = to_int(request.args.get("ttl")) or SPECTROGRAM_PROXY_CACHE_TTL_SECONDS
 
-    payload, error, status_code, stale = get_spectrogram_image(source, force_refresh=force_refresh, ttl_seconds=ttl)
+    payload, error, status_code, stale = get_spectrogram_image(
+        source,
+        force_refresh=force_refresh,
+        ttl_seconds=ttl,
+        allow_insecure=allow_insecure
+    )
     if not payload:
         return jsonify({"error": error or "Unable to fetch spectrogram image", "source": source}), status_code
 
@@ -916,9 +1394,111 @@ def spectrogram_proxy():
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Spectrogram-Source"] = source
     response.headers["X-Spectrogram-Stale"] = "1" if stale else "0"
+    response.headers["X-Spectrogram-Insecure-TLS"] = "1" if payload.get("insecure_tls") else "0"
     if error:
         response.headers["X-Spectrogram-Error"] = error
     return response
+
+
+@app.route("/spectrogram-generated")
+def spectrogram_generated():
+    """Backward-compatible single-series GOES chart endpoint."""
+    force_raw = normalize_text(request.args.get("force") or "0")
+    force_refresh = force_raw in {"1", "true", "yes", "on"}
+    ttl = to_int(request.args.get("ttl")) or SPECTROGRAM_GENERATED_CACHE_TTL_SECONDS
+
+    payload, error, status_code = get_generated_spectrogram(force_refresh=force_refresh, ttl_seconds=ttl)
+    if not payload:
+        return jsonify({"error": error or "Unable to generate spectrogram"}), status_code
+
+    response = Response(payload.get("bytes") or b"", mimetype=payload.get("content_type") or "image/jpeg")
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Spectrogram-Source"] = payload.get("source", "noaa_goes")
+    response.headers["X-Spectrogram-Stale"] = "1" if payload.get("stale") else "0"
+    if error:
+        response.headers["X-Spectrogram-Error"] = error
+    return response
+
+
+geomagnetic_chart_cache = {"cached_at": 0, "payload": None}
+GEOMAGNETIC_CHART_CACHE_TTL_SECONDS = 300
+
+
+@app.route("/geomagnetic-chart")
+def geomagnetic_chart():
+    """Dual-series 24-hour chart: NOAA GOES Hn (nT, teal) + Schumann SRI (amber)."""
+    force_raw = normalize_text(request.args.get("force") or "0")
+    force_refresh = force_raw in {"1", "true", "yes", "on"}
+    now = time.time()
+
+    if (geomagnetic_chart_cache.get("payload")
+            and not force_refresh
+            and (now - geomagnetic_chart_cache.get("cached_at", 0) <= GEOMAGNETIC_CHART_CACHE_TTL_SECONDS)):
+        cached = geomagnetic_chart_cache["payload"]
+        resp = Response(cached["bytes"], mimetype="image/jpeg")
+        resp.headers["Cache-Control"] = "no-store"
+        resp.headers["X-Chart-Source"] = "cache"
+        return resp
+
+    # Fetch GOES magnetometer data (primary → secondary fallback)
+    mag_data, mag_err = get_goes_magnetometer_data("primary", "1-day")
+    if mag_err:
+        mag_data, mag_err = get_goes_magnetometer_data("secondary", "1-day")
+
+    # Load stored SRI trend history
+    sri_points = load_schumann_sri_for_chart(hours=24)
+
+    if not mag_data and not sri_points:
+        if geomagnetic_chart_cache.get("payload"):
+            cached = geomagnetic_chart_cache["payload"]
+            resp = Response(cached["bytes"], mimetype="image/jpeg")
+            resp.headers["X-Chart-Stale"] = "1"
+            return resp
+        return jsonify({"error": mag_err or "No data available for chart"}), 502
+
+    chart_bytes, chart_err = generate_dual_geomagnetic_chart(mag_data or [], sri_points)
+
+    if chart_err or not chart_bytes:
+        if geomagnetic_chart_cache.get("payload"):
+            cached = geomagnetic_chart_cache["payload"]
+            resp = Response(cached["bytes"], mimetype="image/jpeg")
+            resp.headers["X-Chart-Stale"] = "1"
+            return resp
+        return jsonify({"error": chart_err or "Failed to render chart"}), 502
+
+    geomagnetic_chart_cache["cached_at"] = now
+    geomagnetic_chart_cache["payload"] = {"bytes": chart_bytes}
+
+    resp = Response(chart_bytes, mimetype="image/jpeg")
+    resp.headers["Cache-Control"] = "no-store"
+    resp.headers["X-Chart-Source"] = "live"
+    resp.headers["X-Chart-Sri-Points"] = str(len(sri_points))
+    resp.headers["X-Chart-Goes-Points"] = str(len(mag_data) if mag_data else 0)
+    return resp
+
+
+@app.route("/geomagnetic-series")
+def geomagnetic_series():
+    """JSON timeseries for frontend composite chart (GOES Hn)."""
+    hours = to_int(request.args.get("hours")) or 24
+    component_raw = (request.args.get("component") or "Hn").strip()
+    component = {
+        "hn": "Hn",
+        "hp": "Hp",
+        "he": "He",
+        "total": "total"
+    }.get(component_raw.lower(), "Hn")
+
+    points, error, source = load_goes_series_for_chart(hours=hours, component=component)
+    status = 200
+    return jsonify({
+        "component": component,
+        "hours": hours,
+        "source": source,
+        "count": len(points),
+        "error": error,
+        "points": points
+    }), status
 
 
 @app.route("/schumann-response")
@@ -972,6 +1552,24 @@ def schumann_response():
         "attempted_sources": attempted_sources,
         "upstream_error": upstream_error
     }), 503
+
+
+@app.route("/solar-composite")
+def solar_composite():
+    force_raw = normalize_text(request.args.get("force") or "0")
+    force_refresh = force_raw in {"1", "true", "yes", "on"}
+
+    try:
+        payload = get_solar_composite(force_refresh=force_refresh)
+        return jsonify(payload)
+    except RuntimeError as err:
+        cached = solar_cache.get("payload")
+        if cached:
+            stale = dict(cached)
+            stale["stale"] = True
+            stale["error"] = str(err)
+            return jsonify(stale), 200
+        return jsonify({"error": str(err), "source": "solar-composite"}), 503
 
 
 @app.route("/trend-history", methods=["GET", "POST"])

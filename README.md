@@ -253,6 +253,13 @@ data.current.value
 
 If remote and derived sources fail or return incompatible payloads, the backend falls back to `data/schumann_response.json` when available.
 
+## Schumann Panel Behavior
+
+- Solar and Schumann are intentionally paired as `Driver` and `Response` role badges in the Space Weather header row.
+- The Schumann panel supports `Chart`, `Generated`, and `Tomsk` views while keeping current response metrics visible in the panel header.
+- In chart mode, the SRI threshold legend is rendered above the composite chart for quick lane interpretation.
+- Generated fallback imagery is prevented from being treated as live ELF source data, so persisted `elf_observations` remain tied to real spectrogram inputs.
+
 ## Persistence
 
 - Trend history is written to `data/trend_history.json`
