@@ -27,6 +27,7 @@ Widget snapshots:
 ![Volcano](../Screenshots/volcano.png)
 ![Solar](../Screenshots/solar.png)
 ![Schumann](../Screenshots/Schumann.png)
+![Schumann Lightning + Event Anomaly Chips](../Screenshots/img3.png)
 ![NEOs](../Screenshots/neos.png)
 ![Weather](../Screenshots/weather.png)
 ![Alerts](../Screenshots/alerts.png)

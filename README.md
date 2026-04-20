@@ -22,9 +22,9 @@ Full dashboard view:
 
 Widget snapshots:
 
-![Img1](Screenshots/img1.png)
-![Img1](Screenshots/img2.png)
-![Img1](Screenshots/img3.png)
+![Widget Snapshot 1](Screenshots/img1.png)
+![Widget Snapshot 2](Screenshots/img2.png)
+![Schumann Lightning + Event Anomaly Chips](Screenshots/img3.png)
 
 Note: `weather.png` intentionally blurs the local city for privacy.
 
