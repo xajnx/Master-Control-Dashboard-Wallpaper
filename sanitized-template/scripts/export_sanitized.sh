@@ -19,9 +19,9 @@ cp "${ROOT_DIR}/config.example.json" "${OUT_DIR}/config.example.json"
 cp "${ROOT_DIR}/README.md" "${OUT_DIR}/README.md"
 cp "${ROOT_DIR}/scripts/export_sanitized.sh" "${OUT_DIR}/scripts/export_sanitized.sh"
 
-if [[ -f "${ROOT_DIR}/assets/angel1.jpg" ]]; then cp "${ROOT_DIR}/assets/angel1.jpg" "${OUT_DIR}/assets/angel1.jpg"; fi
-if [[ -f "${ROOT_DIR}/assets/angel2.jpg" ]]; then cp "${ROOT_DIR}/assets/angel2.jpg" "${OUT_DIR}/assets/angel2.jpg"; fi
-if [[ -f "${ROOT_DIR}/assets/angel3.jpg" ]]; then cp "${ROOT_DIR}/assets/angel3.jpg" "${OUT_DIR}/assets/angel3.jpg"; fi
+if [[ -f "${ROOT_DIR}/assets/bg1.jpg" ]]; then cp "${ROOT_DIR}/assets/bg1.jpg" "${OUT_DIR}/assets/bg1.jpg"; fi
+if [[ -f "${ROOT_DIR}/assets/bg2.jpg" ]]; then cp "${ROOT_DIR}/assets/bg2.jpg" "${OUT_DIR}/assets/bg2.jpg"; fi
+if [[ -f "${ROOT_DIR}/assets/bg3.jpg" ]]; then cp "${ROOT_DIR}/assets/bg3.jpg" "${OUT_DIR}/assets/bg3.jpg"; fi
 
 cat > "${OUT_DIR}/config.local.json" <<'JSON'
 {
@@ -38,9 +38,9 @@ cat > "${OUT_DIR}/config.local.json" <<'JSON'
   },
   "visuals": {
     "backgroundImages": [
-      "/assets/angel1.jpg",
-      "/assets/angel2.jpg",
-      "/assets/angel3.jpg"
+      "/assets/bg1.jpg",
+      "/assets/bg2.jpg",
+      "/assets/bg3.jpg"
     ]
   }
 }

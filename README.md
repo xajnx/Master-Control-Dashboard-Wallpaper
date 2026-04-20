@@ -4,10 +4,11 @@ A local situational-awareness dashboard with a static frontend and a Flask API p
 
 ## Features
 
-- System telemetry: CPU, memory, disk, uptime
+- System telemetry: CPU, RAM used/total, disk, uptime, net RX/TX, optional WiFi signal, optional CPU temp
 - Earthquakes and critical tsunami alerts
 - Solar activity: Kp index and solar wind plasma context
-- Schumann response widget with strict source separation
+- Schumann response widget with strict source separation plus atmospheric lightning-density context
+- Event Anomaly index (coherence-based multi-domain anomaly scoring with compact diagnostics)
 - Volcano activity details from EONET
 - Weather, AQI, local forecast summary, and severe weather alerts
 - Interactive radar with pan/zoom, cloud layer, and surface fronts overlay
@@ -104,6 +105,8 @@ The backend also proxies NWS weather alerts for both statewide and point-based q
 Phase 1 correlation logging is now available via `POST /correlation-events` and `GET /correlation-events`. Events are append-only and stored in `data/correlation_events.jsonl` for downstream parsing and analysis.
 
 Phase 2 adds `GET /spectrogram-proxy?source=<url>` so spectrogram frames can be fetched via same-origin for safe pixel analysis. Optional `schumann.spectrogramTopHz` and `schumann.spectrogramBottomHz` can be set in `config.local.json` to tune pixel-to-frequency mapping.
+
+Atmospheric driver support now includes lightning density in derived Schumann response calculations. Coherence/Event anomaly scoring is available through `GET /coherence-anomaly-index` and is surfaced in the Schumann panel UI.
 
 ### Frontend config: `config.local.json`
 

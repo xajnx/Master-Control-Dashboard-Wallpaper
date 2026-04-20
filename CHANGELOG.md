@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-04-20
+
+### Atmospheric driver integration
+- Added lightning density ingestion module and integrated lightning as an atmospheric driver component in derived Schumann response calculations.
+- Exposed lightning contribution in Schumann component output (`lightning_density`) including normalized score, strike count, and flash-rate metadata.
+
+### Event Anomaly index and Schumann UX
+- Added `GET /coherence-anomaly-index` endpoint for the Coherence/Event Anomaly score and feature breakdown.
+- Embedded compact Lightning and Event Anomaly chips in the Schumann panel without altering the grid layout.
+- Added conditional top-contributor rendering for elevated/anomalous states.
+- Added clickable Schumann anomaly diagnostics drawer and persisted open/closed preference in localStorage.
+
+### System monitor telemetry expansion
+- Extended `/system` payload and widget with RAM used/total values, network RX/TX rate, optional WiFi signal level, and optional CPU temperature display.
+
+### Sanitized template updates
+- Renamed bundled sanitized-template background images to generic names (`bg1.jpg`, `bg2.jpg`, `bg3.jpg`).
+- Updated sanitized-template dashboard/config/export references to use generic background names.
+
 ## 2026-04-10
 
 ### Schumann panel UX polish

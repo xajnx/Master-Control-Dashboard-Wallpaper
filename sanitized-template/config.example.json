@@ -44,9 +44,9 @@
   },
   "visuals": {
     "backgroundImages": [
-      "/assets/angel1.jpg",
-      "/assets/angel2.jpg",
-      "/assets/angel3.jpg"
+      "/assets/bg1.jpg",
+      "/assets/bg2.jpg",
+      "/assets/bg3.jpg"
     ]
   }
 }

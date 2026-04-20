@@ -54,6 +54,7 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    min-width: 0;
     box-shadow: inset 0 1px 0 rgba(220,245,255,0.08), 0 8px 20px rgba(0,0,0,0.24);
     position: relative;
 }
@@ -346,6 +347,18 @@ body {
     flex: 1 1 auto;
 }
 
+.panel-solar #solarHealth {
+    flex: none;
+    min-height: 38px;
+    max-height: 38px;
+    overflow: hidden;
+}
+
+.panel-solar #solarHealth .health {
+    margin-top: 0;
+    min-height: 0;
+}
+
 .panel-schumann .widget-scroll {
     display: flex;
     flex-direction: column;
@@ -359,6 +372,112 @@ body {
     margin-bottom: 0;
     flex: 0 0 auto;
 }
+
+.panel-schumann #schumann .schumann-signal-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin-top: 1px;
+}
+
+.panel-schumann #schumann .signal-chip {
+    display: inline-flex;
+    align-items: center;
+    height: 16px;
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 9px;
+    letter-spacing: 0.02em;
+    border: 1px solid rgba(200, 214, 232, 0.32);
+    color: rgba(240, 247, 255, 0.95);
+    background: rgba(255, 255, 255, 0.06);
+    white-space: nowrap;
+}
+
+.panel-schumann #schumann .signal-chip.lightning-low {
+    border-color: rgba(128, 216, 168, 0.45);
+    background: rgba(80, 182, 126, 0.18);
+}
+
+.panel-schumann #schumann .signal-chip.lightning-mid {
+    border-color: rgba(255, 214, 120, 0.5);
+    background: rgba(255, 184, 64, 0.18);
+}
+
+.panel-schumann #schumann .signal-chip.lightning-high {
+    border-color: rgba(255, 145, 145, 0.58);
+    background: rgba(255, 86, 86, 0.2);
+}
+
+.panel-schumann #schumann .signal-chip.cai-baseline {
+    border-color: rgba(128, 216, 168, 0.45);
+    background: rgba(80, 182, 126, 0.18);
+}
+
+.panel-schumann #schumann .signal-chip.cai-watch {
+    border-color: rgba(126, 176, 255, 0.5);
+    background: rgba(74, 126, 220, 0.2);
+}
+
+.panel-schumann #schumann .signal-chip.cai-elevated {
+    border-color: rgba(255, 214, 120, 0.55);
+    background: rgba(255, 184, 64, 0.2);
+}
+
+.panel-schumann #schumann .signal-chip.cai-anomalous {
+    border-color: rgba(255, 130, 130, 0.62);
+    background: rgba(255, 64, 64, 0.23);
+    box-shadow: 0 0 8px rgba(255, 102, 102, 0.24);
+}
+
+.panel-schumann #schumann .schumann-detail-line {
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+.panel-schumann #schumann .cai-toggle-chip {
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.panel-schumann #schumann .cai-toggle-chip:focus-visible {
+    outline: 1px solid rgba(180, 212, 255, 0.85);
+    outline-offset: 1px;
+}
+
+.panel-schumann #schumann .schumann-anomaly-drawer {
+    display: block;
+    width: 100%;
+    margin-top: 1px;
+    padding: 0 8px;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    border-left: 2px solid rgba(158, 188, 226, 0.36);
+    background: rgba(255, 255, 255, 0.025);
+    transition: max-height 0.22s ease, opacity 0.22s ease, padding 0.22s ease;
+}
+
+.panel-schumann #schumann .schumann-anomaly-drawer.open {
+    max-height: 110px;
+    opacity: 1;
+    padding: 4px 8px;
+}
+
+.panel-schumann #schumann .schumann-anomaly-drawer-line {
+    font-size: 9.6px;
+    line-height: 1.25;
+    opacity: 0.88;
+}
+
+.panel-schumann #schumann .schumann-anomaly-drawer-label {
+    opacity: 0.72;
+    margin-right: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
 .panel-neos { grid-area: neos; }
 .panel-weather { grid-area: weather; }
 .panel-alerts { grid-area: alerts; }
@@ -454,6 +573,10 @@ body {
         text-overflow: ellipsis;
     }
 
+    .panel-schumann .schumann-subheader-row .desc {
+        font-size: 10px;
+    }
+
     .grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-template-rows: none;
@@ -497,6 +620,14 @@ body {
         font-size: 9px;
         line-height: 1.12;
         max-width: 64vw;
+    }
+
+    .panel-schumann .schumann-subheader-row {
+        align-items: flex-start;
+    }
+
+    .panel-schumann .schumann-subheader-row .desc {
+        font-size: 9.5px;
     }
 
     .grid {
@@ -865,8 +996,22 @@ canvas {
 }
 
 .schumann-header-controls #schumann {
+    flex: none;
     margin-top: 0;
     text-align: right;
+}
+
+.schumann-subheader-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.schumann-subheader-row .desc {
+    margin-top: 0;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .schumann-header-controls #schumann .item {
@@ -917,7 +1062,7 @@ canvas {
 }
 
 #schumannSpectrogramStatus {
-    margin-top: 2px;
+    margin-top: 0;
 }
 
 .schumann-spectrogram-wrap {
@@ -1189,6 +1334,15 @@ canvas {
     50% { opacity: 0.62; }
 }
 
+.schumann-alert-chip.soft-pulse {
+    animation: chip-soft-pulse 2.25s ease-in-out infinite;
+}
+
+@keyframes chip-soft-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.78; }
+}
+
 .schumann-event-marker {
     font-size: 10px;
     font-weight: bold;
@@ -1382,10 +1536,12 @@ canvas {
     <button id="schumannViewTomskBtn" class="schumann-view-btn" type="button" title="Show live Tomsk spectrogram image">Tomsk</button>
 </div>
 <div id="schumann" class="list"></div>
+</div>
+</div>
+<div class="schumann-subheader-row">
+<div class="desc">Driver + effect view: SRI forcing proxy and observed ELF spectrogram.</div>
 <span id="schumannAlertChip" class="schumann-alert-chip schumann-alert-baseline" aria-live="polite" title="Correlation alert level">Baseline</span>
 </div>
-</div>
-<div class="desc">Driver + effect view: SRI forcing proxy and observed ELF spectrogram.</div>
 <div class="widget-scroll">
 <div id="schumannSpectrogramStatus" class="list"></div>
 <div style="font-size:10px;opacity:0.75;margin:4px 0 2px;display:flex;gap:12px;flex-wrap:wrap;" id="schumannLegend">
@@ -1487,6 +1643,7 @@ let tsunamiItems = [];
 let quakesStatus = "";
 let tsunamiStatus = "";
 let trendSyncTimer = null;
+let schumannAnomalyDrawerOpen = false;
 
 const FETCH_DEFAULT_TIMEOUT = 9000;
 const FETCH_DEFAULT_RETRIES = 1;
@@ -1528,9 +1685,9 @@ const DEFAULT_APP_CONFIG = {
     },
     visuals: {
         backgroundImages: [
-            "/assets/angel1.jpg",
-            "/assets/angel2.jpg",
-            "/assets/angel3.jpg"
+            "/assets/bg1.jpg",
+            "/assets/bg2.jpg",
+            "/assets/bg3.jpg"
         ]
     }
 };
@@ -1560,6 +1717,7 @@ const ALERT_URGENCY_SCORE = { immediate: 4, expected: 3, future: 2, past: 1, unk
 const ALERT_CERTAINTY_SCORE = { observed: 3, likely: 2, possible: 1, unlikely: 0, unknown: 0 };
 const ALERTS_MODE_KEY = "alerts_critical_only";
 const SCHUMANN_VIEW_KEY = "schumann_view_mode";
+const SCHUMANN_ANOMALY_DRAWER_KEY = "schumann_anomaly_drawer_open";
 let alertsCriticalOnly = false;
 let schumannViewMode = "chart";
 const alertTimers = {};
@@ -1619,7 +1777,8 @@ const schumannSpectrogramState = {
     lastAttemptAtMs: 0,
     lastTransportSecurity: "",
     lastError: "",
-    sourceFailures: []
+    sourceFailures: [],
+    elfTelemetryBySource: {}
 };
 const schumannChartSeriesState = {
     lastGeomagneticFetchMs: 0,
@@ -2401,7 +2560,7 @@ function recordSchumannObservation(value, tsMs, source = "spectrogram") {
 
     if (previousEntry && entry.value !== null) {
         const previousValue = toNumber(previousEntry?.value, null);
-        const duplicateWindowMs = 20 * 60 * 1000;
+        const duplicateWindowMs = 45000;
         if (
             previousValue !== null &&
             previousEntry?.source === entry.source &&
@@ -2635,6 +2794,11 @@ function sortNwsAlerts(features) {
 function isSevereLocalAlert(feature) {
     const event = normalizeAlertValue(feature?.properties?.event);
     return LOCAL_SEVERE_ALERT_TERMS.some((term) => event.includes(term));
+}
+
+function isWarningAlert(feature) {
+    const event = normalizeAlertValue(feature?.properties?.event);
+    return event.endsWith("warning");
 }
 
 function isCriticalAlert(feature) {
@@ -3408,6 +3572,37 @@ async function extractSpectrogramIntensityFromUrl(imageUrl) {
     }
 }
 
+async function extractSpectrogramIntensityViaApi(sourceUrl, options = {}) {
+    if (!sourceUrl) return null;
+
+    const cfg = getSchumannAnalysisConfig();
+    const params = new URLSearchParams({
+        source: String(sourceUrl),
+        band_min_hz: String(toNumber(cfg.bandRangeHz?.[0], 7)),
+        band_max_hz: String(toNumber(cfg.bandRangeHz?.[1], 9)),
+        spectrogram_top_hz: String(toNumber(cfg.spectrogramTopHz, 40)),
+        spectrogram_bottom_hz: String(toNumber(cfg.spectrogramBottomHz, 0)),
+        plot_left_ratio: String(toNumber(cfg.plotLeftRatio, 0.039)),
+        plot_right_ratio: String(toNumber(cfg.plotRightRatio, 0.81)),
+        plot_top_ratio: String(toNumber(cfg.plotTopRatio, 0.072)),
+        plot_bottom_ratio: String(toNumber(cfg.plotBottomRatio, 0.935))
+    });
+
+    if (options.forceRefresh) params.set("force", "1");
+    if (options.allowInsecure) params.set("insecure", "1");
+
+    try {
+        const payload = await fetchJson(apiUrl(`/spectrogram-intensity?${params.toString()}`), {
+            timeoutMs: 10000,
+            retries: 0
+        });
+        return toNumber(payload?.intensity, null);
+    } catch (err) {
+        console.warn("Spectrogram API extraction skipped:", err?.message || err);
+        return null;
+    }
+}
+
 function setSchumannSpectrogramError(message = "", level = "degraded") {
     const errorEl = document.getElementById("schumannSpectrogramError");
     if (!errorEl) return;
@@ -3420,6 +3615,41 @@ function setSchumannSpectrogramError(message = "", level = "degraded") {
 
     errorEl.textContent = `Spectrogram: ${message}`;
     errorEl.className = `schumann-spectrogram-error ${level === "offline" ? "offline" : "degraded"}`;
+}
+
+function updateElfSourceTelemetry(sourceName, extractedValue, refreshIntervalMs = 300000) {
+    const key = String(sourceName || "unknown");
+    const telemetry = schumannSpectrogramState.elfTelemetryBySource[key] || {
+        flatCount: 0,
+        nullCount: 0,
+        lastValue: null,
+        updatedAtMs: 0
+    };
+    const nowMs = Date.now();
+    const isNumeric = Number.isFinite(extractedValue);
+    if (isNumeric) {
+        const sameAsPrevious = Number.isFinite(telemetry.lastValue) && Math.abs(telemetry.lastValue - extractedValue) < 1e-9;
+        telemetry.flatCount = sameAsPrevious ? telemetry.flatCount + 1 : 0;
+        telemetry.nullCount = 0;
+        telemetry.lastValue = extractedValue;
+    } else {
+        telemetry.nullCount += 1;
+    }
+    telemetry.updatedAtMs = nowMs;
+
+    const refreshMs = Math.max(60000, toNumber(refreshIntervalMs, 300000) || 300000);
+    const flatLimit = Math.max(8, Math.ceil(refreshMs / 60000) + 4);
+    const nullLimit = 3;
+    const stalled = telemetry.nullCount >= nullLimit;
+
+    schumannSpectrogramState.elfTelemetryBySource[key] = telemetry;
+    return {
+        stalled,
+        flatCount: telemetry.flatCount,
+        nullCount: telemetry.nullCount,
+        flatLimit,
+        nullLimit
+    };
 }
 
 function syncSchumannSpectrogramLink(linkEl, imgEl, fullUrl = "") {
@@ -3519,6 +3749,13 @@ async function loadSchumannSpectrogram(forceRefresh = false, sourceMode = "auto"
             imgEl.src = cachedSrc;
         }
         if (cachedSrc) {
+            if (active?.type === "image") {
+                const telemetry = schumannSpectrogramState.elfTelemetryBySource?.[active.name];
+                const cachedValue = toNumber(telemetry?.lastValue, null);
+                if (cachedValue !== null) {
+                    recordSchumannObservation(cachedValue, now, active.name);
+                }
+            }
             setSchumannSpectrogramPlaceholder(false);
             syncSchumannSpectrogramLink(linkEl, imgEl, cachedSrc || "");
             markHealth("schumann", "ok", `ELF cached (${active.name})`);
@@ -3531,9 +3768,23 @@ async function loadSchumannSpectrogram(forceRefresh = false, sourceMode = "auto"
         }
     }
 
-    const orderedSources = schumannSpectrogramState.activeSourceName
-        ? [...sources.filter((src) => src.name === schumannSpectrogramState.activeSourceName), ...sources.filter((src) => src.name !== schumannSpectrogramState.activeSourceName)]
-        : sources;
+    let orderedSources;
+    if (resolvedMode === "auto") {
+        const imageSources = sources.filter((src) => src.type === "image");
+        const nonImageSources = sources.filter((src) => src.type !== "image");
+        const prioritizeActive = (list) => {
+            if (!schumannSpectrogramState.activeSourceName) return list;
+            return [
+                ...list.filter((src) => src.name === schumannSpectrogramState.activeSourceName),
+                ...list.filter((src) => src.name !== schumannSpectrogramState.activeSourceName)
+            ];
+        };
+        orderedSources = [...prioritizeActive(imageSources), ...prioritizeActive(nonImageSources)];
+    } else {
+        orderedSources = schumannSpectrogramState.activeSourceName
+            ? [...sources.filter((src) => src.name === schumannSpectrogramState.activeSourceName), ...sources.filter((src) => src.name !== schumannSpectrogramState.activeSourceName)]
+            : sources;
+    }
 
     schumannSpectrogramState.lastAttemptAtMs = now;
     const failures = [];
@@ -3549,6 +3800,27 @@ async function loadSchumannSpectrogram(forceRefresh = false, sourceMode = "auto"
                 ? await probeSpectrogramProxyHeaders(fetchUrl)
                 : { insecureTls: false };
             const loaded = await fetchSpectrogramImage(fetchUrl);
+
+            let extracted = null;
+            if (source.type === "image") {
+                extracted = await extractSpectrogramIntensityFromUrl(loaded.src);
+                if (!Number.isFinite(extracted)) {
+                    extracted = await extractSpectrogramIntensityViaApi(source.url, {
+                        forceRefresh,
+                        allowInsecure: shouldUseInsecureTomskProxy(source.url)
+                    });
+                }
+                const telemetry = updateElfSourceTelemetry(source.name, extracted, source.refreshInterval);
+                if (resolvedMode === "auto" && telemetry.stalled) {
+                    failures.push(`${source.name}: ELF stalled (${telemetry.flatCount} flat, ${telemetry.nullCount} null)`);
+                    continue;
+                }
+                if (resolvedMode === "auto" && !Number.isFinite(extracted)) {
+                    failures.push(`${source.name}: no usable ELF sample`);
+                    continue;
+                }
+            }
+
             schumannSpectrogramState.activeSourceName = source.name;
             schumannSpectrogramState.activeSourceUrl = source.url;
             schumannSpectrogramState.lastImageSrc = loaded.src;
@@ -3581,18 +3853,10 @@ async function loadSchumannSpectrogram(forceRefresh = false, sourceMode = "auto"
                 reader.readAsDataURL(blob);
             })).catch(() => {});
 
-            // Keep spectrogram processing async so frame rendering is never blocked.
-            setTimeout(() => {
-                void (async () => {
-                    if (source.type === "image") {
-                        const extracted = await extractSpectrogramIntensityFromUrl(loaded.src);
-                        if (Number.isFinite(extracted)) {
-                            recordSchumannObservation(extracted, loaded.observedAtMs, source.name);
-                        }
-                    }
-                    processPendingCorrelationWindows(loaded.observedAtMs);
-                })();
-            }, 0);
+            if (source.type === "image" && Number.isFinite(extracted)) {
+                recordSchumannObservation(extracted, loaded.observedAtMs, source.name);
+            }
+            processPendingCorrelationWindows(loaded.observedAtMs);
             return;
         } catch (err) {
             failures.push(`${source.name}: ${err?.message || "fetch failed"}`);
@@ -4403,9 +4667,9 @@ async function loadRadarSnapshot() {
 
 /* ---------------- BACKGROUND ---------------- */
 const images = [
-    assetUrl("/assets/angel1.jpg"),
-    assetUrl("/assets/angel2.jpg"),
-    assetUrl("/assets/angel3.jpg")
+    assetUrl("/assets/bg1.jpg"),
+    assetUrl("/assets/bg2.jpg"),
+    assetUrl("/assets/bg3.jpg")
 ];
 
 let bgIndex = 0;
@@ -4441,10 +4705,34 @@ async function loadSystem() {
     try {
         const data = await fetchJson(apiUrl("/system"), { timeoutMs: 4000, retries: 0 });
         markHealth("system", "ok");
+
+        const ramLine = (data.memory_used_gb != null && data.memory_total_gb != null)
+            ? `RAM: ${data.memory_used_gb} / ${data.memory_total_gb} GB (${data.memory}%)`
+            : `RAM: ${data.memory}%`;
+
+        const cpuLine = (data.cpu_temp_f != null)
+            ? `CPU: ${data.cpu}%  &nbsp;${data.cpu_temp_f}°F`
+            : `CPU: ${data.cpu}%`;
+
+        const fmtRate = (kbps) => {
+            if (kbps == null) return null;
+            if (kbps >= 1024) return `${(kbps / 1024).toFixed(1)} MB/s`;
+            return `${kbps} KB/s`;
+        };
+        const netLine = (data.net_rx_kbps != null)
+            ? `Net: &#8595;${fmtRate(data.net_rx_kbps)} &nbsp;&#8593;${fmtRate(data.net_tx_kbps)}`
+            : ``;
+
+        const wifiLine = (data.wifi_signal_dbm != null)
+            ? `WiFi: ${data.wifi_signal_dbm} dBm${data.wifi_iface ? ` (${escapeHtml(data.wifi_iface)})` : ``}`
+            : ``;
+
         setWidgetHtml(el, "system", `
-            <div class="item">CPU: ${data.cpu}%</div>
-            <div class="item">RAM: ${data.memory}%</div>
+            <div class="item">${cpuLine}</div>
+            <div class="item">${ramLine}</div>
             <div class="item">Disk: ${data.disk}%</div>
+            ${netLine ? `<div class="item">${netLine}</div>` : ``}
+            ${wifiLine ? `<div class="item">${wifiLine}</div>` : ``}
             <div class="item">Uptime: ${escapeHtml(data.uptime)}</div>
             <div class="item" style="font-size:9px;opacity:0.72;">${escapeHtml(startupCheckSummaryLine())}</div>
             <div class="item" style="font-size:10px;opacity:0.6;">Updated: ${nowLabel()}</div>
@@ -4541,7 +4829,7 @@ async function loadSolar() {
             : "";
 
         if (sourceIsStale) {
-            markHealth("solar", "degraded", `Source stale (${formatAge(sourceAgeMs)} old)`);
+            markHealth("solar", "degraded", `Stale ${formatAge(sourceAgeMs)}`);
         } else {
             markHealth("solar", "ok", `${TREND_WINDOW_HOURS}h trend`);
         }
@@ -4634,7 +4922,7 @@ async function loadSolar() {
                     ? `<div class="item" style="font-size:10px;opacity:0.8;color:#ffd166;">Source age: ${escapeHtml(formatAge(sourceAgeMs))} (stale)</div>`
                     : "";
 
-                markHealth("solar", "degraded", "Composite unavailable, using direct NOAA fallback");
+                markHealth("solar", "degraded", "NOAA direct fallback");
                 el.innerHTML = `
                     <div class="item">Kp: <span style="color:${color}">${directKp.toFixed(2)}</span></div>
                     <div class="item">Status: <span style="color:${color}">${status}</span></div>
@@ -5050,7 +5338,18 @@ async function loadSchumann() {
     await loadGeomagneticSeries(GEOMAG_WINDOW_HOURS);
 
     try {
-        const data = await fetchJson(apiUrl("/schumann-response"), { timeoutMs: 6000, retries: 0 });
+        const [sriResult, anomalyResult] = await Promise.allSettled([
+            fetchJson(apiUrl("/schumann-response"), { timeoutMs: 6000, retries: 0 }),
+            fetchJson(apiUrl("/coherence-anomaly-index"), { timeoutMs: 4500, retries: 0 })
+        ]);
+
+        if (sriResult.status !== "fulfilled") {
+            throw sriResult.reason || new Error("Schumann source unavailable");
+        }
+
+        const data = sriResult.value;
+        const anomalyPayload = anomalyResult.status === "fulfilled" ? anomalyResult.value : null;
+        const anomaly = anomalyPayload?.cai && typeof anomalyPayload.cai === "object" ? anomalyPayload.cai : null;
         const responseValue = toNumber(data?.value, null);
 
         if (responseValue === null) {
@@ -5091,7 +5390,8 @@ async function loadSchumann() {
         const schComponentLabels = {
             kp: "Geomagnetic Kp Index",
             plasma_density: "Solar Wind Plasma Density",
-            xray_flux: "Solar X-ray Flux"
+            xray_flux: "Solar X-ray Flux",
+            lightning_density: "Lightning Density"
         };
         const componentValues = data?.components && typeof data.components === "object"
             ? Object.entries(data.components)
@@ -5099,6 +5399,69 @@ async function loadSchumann() {
                 .join(" | ")
             : "";
         renderSolarComponentStrip(componentValues);
+
+        const lightningScore = toNumber(data?.components?.lightning_density?.weighted, null);
+        const lightningStrikes = toNumber(data?.components?.lightning_density?.raw_strike_count_15m, null);
+        let lightningTier = "low";
+        let lightningLabel = "Low";
+        if (lightningScore !== null && lightningScore >= 10) {
+            lightningTier = "high";
+            lightningLabel = "High";
+        } else if (lightningScore !== null && lightningScore >= 5) {
+            lightningTier = "mid";
+            lightningLabel = "Moderate";
+        }
+        const lightningText = lightningScore === null
+            ? "Lightning n/a"
+            : `Lightning ${lightningScore.toFixed(1)} (${lightningLabel})${lightningStrikes !== null ? ` | ${lightningStrikes} strikes/15m` : ""}`;
+
+        const anomalyScore = toNumber(anomaly?.score, null);
+        const anomalyStateRaw = String(anomaly?.state || "baseline").toLowerCase();
+        const anomalyState = ["baseline", "watch", "elevated", "anomalous"].includes(anomalyStateRaw)
+            ? anomalyStateRaw
+            : "baseline";
+        const anomalyConfidence = toNumber(anomaly?.confidence, null);
+        const anomalyConvergence = toNumber(anomaly?.convergence, null);
+        const anomalyDataQuality = toNumber(anomaly?.data_quality, null);
+        const anomalyFeatures = anomaly?.features && typeof anomaly.features === "object" ? anomaly.features : {};
+        const anomalyBadgeText = anomalyScore === null
+            ? "Event Anomaly n/a"
+            : `Event Anomaly ${Math.round(anomalyScore)} (${anomalyState})${anomalyConfidence !== null ? ` C${anomalyConfidence}/5` : ""}`;
+
+        const rankedAnomalySignals = Object.entries(anomalyFeatures)
+            .filter(([name]) => name !== "data_quality")
+            .map(([name, value]) => ({ name, value: toNumber(value, 0) }))
+            .sort((a, b) => b.value - a.value);
+
+        const anomalyTopSignals = rankedAnomalySignals
+            .slice(0, 2)
+            .map((entry) => `${entry.name.replace(/_/g, " ")}: ${(entry.value * 100).toFixed(0)}%`);
+
+        let anomalyDetail = "";
+        if (anomalyScore !== null && anomalyScore >= 45) {
+            if (anomalyTopSignals.length) {
+                anomalyDetail = `<div class="item schumann-detail-line">Top contributors: ${escapeHtml(anomalyTopSignals.join(" | "))}</div>`;
+            }
+        }
+
+        const anomalyChipHtml = anomalyScore === null
+            ? `<span class="signal-chip cai-baseline">${escapeHtml(anomalyBadgeText)}</span>`
+            : `<button id="schumannAnomalyToggle" type="button" class="signal-chip cai-${anomalyState} cai-toggle-chip" aria-expanded="${schumannAnomalyDrawerOpen ? "true" : "false"}" title="Toggle Event Anomaly diagnostics">${escapeHtml(anomalyBadgeText)}</button>`;
+
+        const anomalyDrawerLines = [];
+        if (anomalyConvergence !== null) {
+            anomalyDrawerLines.push(`<div class="schumann-anomaly-drawer-line"><span class="schumann-anomaly-drawer-label">Convergence</span>${(anomalyConvergence * 100).toFixed(0)}%</div>`);
+        }
+        if (anomalyDataQuality !== null) {
+            anomalyDrawerLines.push(`<div class="schumann-anomaly-drawer-line"><span class="schumann-anomaly-drawer-label">Data Quality</span>${(anomalyDataQuality * 100).toFixed(0)}%</div>`);
+        }
+        if (anomalyTopSignals.length) {
+            anomalyDrawerLines.push(`<div class="schumann-anomaly-drawer-line"><span class="schumann-anomaly-drawer-label">Signals</span>${escapeHtml(anomalyTopSignals.join(" | "))}</div>`);
+        }
+
+        const anomalyDrawerHtml = anomalyScore === null
+            ? ""
+            : `<div id="schumannAnomalyDrawer" class="item schumann-anomaly-drawer${schumannAnomalyDrawerOpen ? " open" : ""}" aria-hidden="${schumannAnomalyDrawerOpen ? "false" : "true"}">${anomalyDrawerLines.join("")}</div>`;
 
         const spectrogramUnavailable = !!schumannSpectrogramState.lastError && !schumannSpectrogramState.lastImageSrc;
         const spectrogramStale = !!schumannSpectrogramState.lastError && !!schumannSpectrogramState.lastImageSrc;
@@ -5113,8 +5476,38 @@ async function loadSchumann() {
         el.innerHTML = `
             <div class="item">Response: <span style="color:${color}">${responseValue.toFixed(2)} ${escapeHtml(unit)}</span></div>
             <div class="item" style="font-size:10.4px;opacity:0.9;font-weight:620;">12h Max: ${schMax24h.toFixed(2)} | Avg: ${schAvg24h.toFixed(2)} | Trend: <span style="color:${schTrend.color};font-weight:700;">${schTrend.label}</span></div>
+            <div class="item schumann-signal-row">
+                <span class="signal-chip lightning-${lightningTier}" title="Global lightning density normalized to driver scale">${escapeHtml(lightningText)}</span>
+                ${anomalyChipHtml}
+            </div>
+            ${anomalyDrawerHtml}
+            ${anomalyDetail}
             <div class="item" style="font-size:10.3px;opacity:0.82;">Source: ${escapeHtml(source)} | Observed: ${escapeHtml(formatEventTime(observedAt).replace("Time: ", ""))}</div>
         `;
+
+        const schumannAlertChip = document.getElementById("schumannAlertChip");
+        if (schumannAlertChip) {
+            const isCoreActive = schumannAlertChip.classList.contains("schumann-alert-active");
+            const shouldSoftPulse = (anomalyState === "elevated" || anomalyState === "anomalous") && anomalyScore !== null;
+            schumannAlertChip.classList.toggle("soft-pulse", shouldSoftPulse && !isCoreActive);
+        }
+
+        const anomalyToggle = document.getElementById("schumannAnomalyToggle");
+        const anomalyDrawer = document.getElementById("schumannAnomalyDrawer");
+        if (anomalyToggle && anomalyDrawer) {
+            anomalyToggle.addEventListener("click", () => {
+                schumannAnomalyDrawerOpen = !schumannAnomalyDrawerOpen;
+                anomalyDrawer.classList.toggle("open", schumannAnomalyDrawerOpen);
+                anomalyDrawer.setAttribute("aria-hidden", schumannAnomalyDrawerOpen ? "false" : "true");
+                anomalyToggle.setAttribute("aria-expanded", schumannAnomalyDrawerOpen ? "true" : "false");
+
+                try {
+                    localStorage.setItem(SCHUMANN_ANOMALY_DRAWER_KEY, schumannAnomalyDrawerOpen ? "1" : "0");
+                } catch (_) {
+                    // persistence is optional
+                }
+            });
+        }
 
         drawSchumannCompositeChart("schumannChart", {
             windowHours: TREND_WINDOW_HOURS,
@@ -5135,6 +5528,8 @@ async function loadSchumann() {
         const errMsg = err?.message || "Unknown API error";
         markHealth("schumann", "offline", `API error: ${errMsg}`);
         updateWidgetAlert("schumann", false);
+        const schumannAlertChip = document.getElementById("schumannAlertChip");
+        if (schumannAlertChip) schumannAlertChip.classList.remove("soft-pulse");
         renderSolarComponentStrip("");
         el.innerHTML = `Offline<div class="item" style="font-size:10px;opacity:0.7;">${escapeHtml(errMsg)}</div>`;
         renderGraphHealth("schumann", "schumannHealth");
@@ -5492,13 +5887,14 @@ async function loadNEOs() {
 
 /* ---------------- WEATHER ---------------- */
 function renderAlertsWidgetBody(displayAlerts, statusLine) {
-    return `${displayAlerts.slice(0, 7).map((a) =>
-        `<div class="item">
-        <a href="${safeHref(a?.id)}" target="_blank" rel="noopener noreferrer" style="color:#ffaa00; text-decoration:none;">
+    return `${displayAlerts.slice(0, 7).map((a) => {
+        const alertColor = isWarningAlert(a) ? "#ff5555" : "#ffaa00";
+        return `<div class="item">
+        <a href="${safeHref(a?.id)}" target="_blank" rel="noopener noreferrer" style="color:${alertColor}; text-decoration:none;">
         ${escapeHtml(a?.properties?.event ?? "Weather Alert")} <br>
         <span style="font-size: 10px; color: #cccccc; font-weight: normal;">${escapeHtml(a?.properties?.areaDesc ?? "Unknown area")}</span>
-        </a></div>`
-    ).join("")}${statusLine}`;
+        </a></div>`;
+    }).join("")}${statusLine}`;
 }
 
 function readAlertsCache() {
@@ -5719,7 +6115,7 @@ async function loadWeather() {
                         ? '<div class="item" style="font-size:10px;opacity:0.7;">No active point alerts.</div>'
                         : localAlerts.map((alert) => `
                             <div class="item" style="font-size:10px;line-height:1.35;">
-                                <a href="${safeHref(alert?.id)}" target="_blank" rel="noopener noreferrer" style="color:${isSevereLocalAlert(alert) ? "#ff8a8a" : "#ffd166"};text-decoration:none;">
+                                <a href="${safeHref(alert?.id)}" target="_blank" rel="noopener noreferrer" style="color:${isWarningAlert(alert) ? "#ff5555" : "#ffaa00"};text-decoration:none;">
                                     ${escapeHtml(alert?.properties?.event || "Weather Alert")}
                                 </a>
                             </div>
@@ -5955,8 +6351,12 @@ async function initializeDashboard() {
         } else if (savedView === "spectrogram") {
             schumannViewMode = "tomsk";
         }
+
+        const savedAnomalyDrawer = localStorage.getItem(SCHUMANN_ANOMALY_DRAWER_KEY);
+        schumannAnomalyDrawerOpen = savedAnomalyDrawer === "1";
     } catch (_) {
         schumannViewMode = "chart";
+        schumannAnomalyDrawerOpen = false;
     }
 
     applySchumannViewMode(schumannViewMode);

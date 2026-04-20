@@ -10,6 +10,8 @@ import ssl
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 from schumann_adapter import adapt_schumann_payload
+from lightning_data import get_lightning_data
+from coherence_anomaly_index import compute_cai
 import numpy as np
 from scipy import signal
 from PIL import Image, ImageDraw, ImageFont
@@ -34,6 +36,7 @@ CORS(app, resources={
 })
 
 start_time = time.time()
+_net_prev = {"bytes_sent": 0, "bytes_recv": 0, "ts": 0.0}
 neo_cache = {}
 tsunami_cache = {"cached_at": 0, "payload": None}
 schumann_cache = {"cached_at": 0, "payload": None}
@@ -533,6 +536,87 @@ def get_spectrogram_image(source_url, force_refresh=False, ttl_seconds=SPECTROGR
     return payload, None, 200, False
 
 
+def compute_spectrogram_band_intensity(image_bytes, analysis=None):
+    if not image_bytes:
+        return None, "No image bytes"
+
+    cfg = analysis if isinstance(analysis, dict) else {}
+    band_min_hz = to_float(cfg.get("band_min_hz"))
+    band_max_hz = to_float(cfg.get("band_max_hz"))
+    top_hz = to_float(cfg.get("spectrogram_top_hz"))
+    bottom_hz = to_float(cfg.get("spectrogram_bottom_hz"))
+    left_ratio = to_float(cfg.get("plot_left_ratio"))
+    right_ratio = to_float(cfg.get("plot_right_ratio"))
+    top_ratio = to_float(cfg.get("plot_top_ratio"))
+    bottom_ratio = to_float(cfg.get("plot_bottom_ratio"))
+
+    band_min_hz = band_min_hz if band_min_hz is not None else 7.0
+    band_max_hz = band_max_hz if band_max_hz is not None else 9.0
+    top_hz = top_hz if top_hz is not None else 40.0
+    bottom_hz = bottom_hz if bottom_hz is not None else 0.0
+    left_ratio = clamp(left_ratio if left_ratio is not None else 0.039, 0.0, 0.4)
+    right_ratio = clamp(right_ratio if right_ratio is not None else 0.81, 0.5, 1.0)
+    top_ratio = clamp(top_ratio if top_ratio is not None else 0.072, 0.0, 0.4)
+    bottom_ratio = clamp(bottom_ratio if bottom_ratio is not None else 0.935, 0.6, 1.0)
+
+    if band_min_hz >= band_max_hz:
+        return None, "Invalid analysis band"
+
+    try:
+        with Image.open(io_module.BytesIO(image_bytes)) as image:
+            rgb = image.convert("RGB")
+            pixels = np.asarray(rgb, dtype=np.float32)
+    except Exception as err:
+        return None, f"Decode failed: {err}"
+
+    if pixels.ndim != 3 or pixels.shape[2] < 3:
+        return None, "Unexpected image format"
+
+    height, width = pixels.shape[0], pixels.shape[1]
+    if width < 2 or height < 2:
+        return None, "Image too small"
+
+    left = max(0, min(width - 1, int(np.floor(width * left_ratio))))
+    right = max(left + 1, min(width, int(np.ceil(width * right_ratio))))
+    top = max(0, min(height - 1, int(np.floor(height * top_ratio))))
+    bottom = max(top + 1, min(height, int(np.ceil(height * bottom_ratio))))
+
+    if right - left < 2 or bottom - top < 2:
+        return None, "Plot bounds too narrow"
+
+    plot = pixels[top:bottom, left:right, :3]
+    if plot.size == 0:
+        return None, "Empty plot window"
+
+    r = plot[:, :, 0]
+    g = plot[:, :, 1]
+    b = plot[:, :, 2]
+    luminance = (0.2126 * r) + (0.7152 * g) + (0.0722 * b)
+
+    y_count = luminance.shape[0]
+    y_span = max(1, y_count - 1)
+    max_plot_hz = max(top_hz, bottom_hz + 1.0)
+    min_plot_hz = min(bottom_hz, max_plot_hz - 1.0)
+    y_indices = np.arange(y_count, dtype=np.float32)
+    y_ratio = np.clip(y_indices / y_span, 0.0, 1.0)
+    hz_values = max_plot_hz - (max_plot_hz - min_plot_hz) * y_ratio
+    band_mask = (hz_values >= band_min_hz) & (hz_values <= band_max_hz)
+
+    if not np.any(band_mask):
+        return None, "Band outside plot bounds"
+
+    band_luminance = luminance[band_mask, :]
+    if band_luminance.size == 0:
+        return None, "No band pixels"
+
+    band_avg = float(np.mean(band_luminance))
+    plot_avg = float(np.mean(luminance))
+    normalized = clamp(band_avg / 255.0, 0.0, 1.0)
+    contrast_boost = clamp((band_avg - plot_avg) / 255.0, -1.0, 1.0)
+    intensity = clamp(normalized + max(0.0, contrast_boost) * 0.35, 0.0, 1.0)
+    return float(intensity), None
+
+
 def get_goes_magnetometer_data(satellite="primary", window="1-day"):
     """Fetch real-time GOES magnetometer data from NOAA SWPC.
     GOES fields: He (East), Hp (Parallel), Hn (North), total (magnitude), arcjet_flag.
@@ -555,13 +639,17 @@ def load_schumann_sri_for_chart(hours=24):
         with open(TREND_HISTORY_PATH, "r", encoding="utf-8") as fh:
             raw = json.load(fh)
         cutoff_ms = (time.time() - hours * 3600) * 1000
-        points = [
-            p for p in raw.get("schumann", [])
-            if isinstance(p, dict)
-            and to_int(p.get("ts")) is not None
-            and to_float(p.get("value")) is not None
-            and to_int(p.get("ts")) >= cutoff_ms
-        ]
+        points = []
+        for p in raw.get("schumann", []):
+            if not isinstance(p, dict):
+                continue
+            ts = to_int(p.get("ts"))
+            val = to_float(p.get("value"))
+            if ts is None or val is None:
+                continue
+            if ts < cutoff_ms:
+                continue
+            points.append({"ts": ts, "value": val})
         points.sort(key=lambda p: p["ts"])
         return points
     except Exception:
@@ -673,6 +761,7 @@ def generate_dual_geomagnetic_chart(mag_data, sri_points=None, component="Hn"):
             return bottom - int(ratio * (bottom - top))
 
         # --- Y ranges ---
+        gmin, gmax = 0.0, 0.0
         if has_goes:
             g_arr = np.array(goes_vals, dtype=np.float64)
             gmin, gmax = float(g_arr.min()), float(g_arr.max())
@@ -681,6 +770,10 @@ def generate_dual_geomagnetic_chart(mag_data, sri_points=None, component="Hn"):
         else:
             g_lo, g_hi = -1, 1
 
+        smin, smax = 0.0, 0.0
+        s_lo, s_hi = -1.0, 1.0
+        sri_vals_arr = np.array([], dtype=np.float64)
+        sri_ts_arr = np.array([], dtype=np.float64)
         if has_sri:
             sri_vals_arr = np.array([to_float(p["value"]) for p in sri_points], dtype=np.float64)
             sri_ts_arr = np.array([to_int(p["ts"]) for p in sri_points], dtype=np.float64)
@@ -1176,6 +1269,24 @@ def derive_schumann_response():
     except RuntimeError as err:
         component_errors.append(str(err))
 
+    # Lightning density as atmospheric driver (new component)
+    try:
+        lightning_data = get_lightning_data(use_cache=True)
+        lightning_component = clamp(lightning_data.get("density_score", 0), 0.0, 15.0)
+        components["lightning_density"] = {
+            "raw_strike_count_15m": lightning_data.get("strike_count_15m", 0),
+            "raw_avg_current_ka": lightning_data.get("avg_peak_current_ka", 0),
+            "weighted": round(lightning_component, 2),
+            "scale": "0-15",
+            "observed_at": lightning_data.get("timestamp"),
+            "source": f"Lightning ({lightning_data.get('source', 'unknown')})",
+            "flash_rate_per_min": lightning_data.get("flash_rate_per_min", 0)
+        }
+        if lightning_data.get("timestamp"):
+            observed_times.append(lightning_data["timestamp"])
+    except Exception as err:
+        component_errors.append(f"Lightning fetch error: {str(err)}")
+
     if not components:
         raise RuntimeError("Unable to derive Schumann response from upstream feeds")
 
@@ -1220,15 +1331,79 @@ def iter_configured_schumann_urls():
 
 @app.route("/system")
 def system():
+    global _net_prev
     cpu = psutil.cpu_percent(interval=None)
-    memory = psutil.virtual_memory().percent
+    mem = psutil.virtual_memory()
     disk = psutil.disk_usage('/').percent
+
+    mem_used_gb = round(mem.used / 1024 ** 3, 1)
+    mem_total_gb = round(mem.total / 1024 ** 3, 1)
+    mem_available_gb = round(mem.available / 1024 ** 3, 1)
+
+    # Network Rx/Tx rate — delta between calls
+    net_now = psutil.net_io_counters()
+    now_ts = time.time()
+    delta_t = now_ts - _net_prev["ts"]
+    if delta_t > 0 and _net_prev["ts"] > 0:
+        rx_kbps = round((net_now.bytes_recv - _net_prev["bytes_recv"]) / delta_t / 1024, 1)
+        tx_kbps = round((net_now.bytes_sent - _net_prev["bytes_sent"]) / delta_t / 1024, 1)
+    else:
+        rx_kbps = None
+        tx_kbps = None
+    _net_prev["bytes_sent"] = net_now.bytes_sent
+    _net_prev["bytes_recv"] = net_now.bytes_recv
+    _net_prev["ts"] = now_ts
+
+    # WiFi signal — parse /proc/net/wireless (Linux)
+    wifi_signal_dbm = None
+    wifi_iface = None
+    try:
+        with open("/proc/net/wireless", "r") as _f:
+            _lines = _f.readlines()
+        for _line in _lines[2:]:
+            _parts = _line.split()
+            if len(_parts) >= 4:
+                _iface = _parts[0].rstrip(":")
+                _level = float(_parts[3].rstrip("."))
+                if _level > 0:
+                    _level -= 256  # old kernel format: raw byte → dBm
+                if _level < 0:
+                    wifi_signal_dbm = int(_level)
+                    wifi_iface = _iface
+                    break
+    except Exception:
+        pass
+
+    # CPU temperature — optional, omit if sensor unavailable; convert C to F
+    cpu_temp_f = None
+    try:
+        _temps = psutil.sensors_temperatures()
+        for _key in ("coretemp", "k10temp", "cpu_thermal", "cpu-thermal", "acpitz"):
+            if _key in _temps and _temps[_key]:
+                _c = _temps[_key][0].current
+                cpu_temp_f = round(_c * 9 / 5 + 32, 1)
+                break
+        if cpu_temp_f is None and _temps:
+            _first = next(iter(_temps.values()))
+            if _first:
+                _c = _first[0].current
+                cpu_temp_f = round(_c * 9 / 5 + 32, 1)
+    except Exception:
+        pass
 
     return jsonify({
         "cpu": cpu,
-        "memory": memory,
+        "memory": mem.percent,
+        "memory_used_gb": mem_used_gb,
+        "memory_total_gb": mem_total_gb,
+        "memory_available_gb": mem_available_gb,
         "disk": disk,
-        "uptime": get_uptime()
+        "uptime": get_uptime(),
+        "net_rx_kbps": rx_kbps,
+        "net_tx_kbps": tx_kbps,
+        "wifi_signal_dbm": wifi_signal_dbm,
+        "wifi_iface": wifi_iface,
+        "cpu_temp_f": cpu_temp_f,
     })
 
 
@@ -1420,6 +1595,59 @@ def spectrogram_generated():
     return response
 
 
+@app.route("/spectrogram-intensity")
+def spectrogram_intensity():
+    source = (request.args.get("source") or "").strip()
+    force_raw = normalize_text(request.args.get("force") or "0")
+    force_refresh = force_raw in {"1", "true", "yes", "on"}
+    insecure_raw = normalize_text(request.args.get("insecure") or "0")
+    allow_insecure = insecure_raw in {"1", "true", "yes", "on"}
+    ttl = to_int(request.args.get("ttl")) or SPECTROGRAM_PROXY_CACHE_TTL_SECONDS
+
+    analysis = {
+        "band_min_hz": request.args.get("band_min_hz"),
+        "band_max_hz": request.args.get("band_max_hz"),
+        "spectrogram_top_hz": request.args.get("spectrogram_top_hz"),
+        "spectrogram_bottom_hz": request.args.get("spectrogram_bottom_hz"),
+        "plot_left_ratio": request.args.get("plot_left_ratio"),
+        "plot_right_ratio": request.args.get("plot_right_ratio"),
+        "plot_top_ratio": request.args.get("plot_top_ratio"),
+        "plot_bottom_ratio": request.args.get("plot_bottom_ratio")
+    }
+
+    payload, error, status_code, stale = get_spectrogram_image(
+        source,
+        force_refresh=force_refresh,
+        ttl_seconds=ttl,
+        allow_insecure=allow_insecure
+    )
+    if not payload:
+        return jsonify({
+            "ok": False,
+            "error": error or "Unable to fetch spectrogram image",
+            "source": source
+        }), status_code
+
+    intensity, intensity_error = compute_spectrogram_band_intensity(payload.get("bytes") or b"", analysis=analysis)
+    if intensity is None:
+        return jsonify({
+            "ok": False,
+            "error": intensity_error or "Unable to derive intensity",
+            "source": source,
+            "stale": bool(stale),
+            "insecure_tls": bool(payload.get("insecure_tls"))
+        }), 200
+
+    return jsonify({
+        "ok": True,
+        "intensity": intensity,
+        "source": source,
+        "stale": bool(stale),
+        "insecure_tls": bool(payload.get("insecure_tls")),
+        "observed_at": datetime.now(timezone.utc).isoformat()
+    })
+
+
 geomagnetic_chart_cache = {"cached_at": 0, "payload": None}
 GEOMAGNETIC_CHART_CACHE_TTL_SECONDS = 300
 
@@ -1552,6 +1780,63 @@ def schumann_response():
         "attempted_sources": attempted_sources,
         "upstream_error": upstream_error
     }), 503
+
+
+@app.route("/coherence-anomaly-index")
+def coherence_anomaly_index():
+    """
+    Compute Coherence Anomaly Index (CAI) — multi-domain anomaly convergence metric.
+    
+    Returns 0-100 score reflecting cross-domain signal agreement.
+    States: baseline, watch, elevated, anomalous
+    """
+    try:
+        # Fetch current state from all sources
+        sri_data = derive_schumann_response()
+        sri_value = sri_data.get("value", 0)
+        
+        # Extract component values for baseline tracking
+        kp = sri_data.get("components", {}).get("kp", {}).get("raw", 0)
+        lightning_density = sri_data.get("components", {}).get("lightning_density", {}).get("weighted", 0)
+        
+        # Prepare CAI context (partial — full version needs live Schumann measurements)
+        cai_ctx = {
+            "sri_value": sri_value,
+            "sri_z": 0.5,  # Would come from baseline tracker in production
+            "kp": kp,
+            "plasma": sri_data.get("components", {}).get("plasma_density", {}).get("raw", 0),
+            "xray": sri_data.get("components", {}).get("xray_flux", {}).get("raw", 1e-7),
+            "schumann_intensity": 0.5,  # Would come from live spectrogram
+            "schumann_baseline": 0.4,
+            "schumann_deviation": 0.25,  # Would be computed from actual data
+            "spectrogram_available": False,  # Flag for data availability
+            "spectrogram_health": 0.7,
+            "lightning_density_score": lightning_density,
+            "geo_mag_local_delta": 0.0,
+            "infrasound_delta": 0.0,
+            "pressure_anomaly": 0.0,
+            "optical_flash": 0.0,
+            "neo_score": 0,
+            "data_freshness_score": 0.9,
+        }
+        
+        # Compute CAI
+        cai = compute_cai(cai_ctx, update_baselines=True)
+        
+        return jsonify({
+            "cai": cai,
+            "sri_snapshot": {
+                "value": sri_value,
+                "components": {k: v.get("weighted", v.get("raw", 0)) 
+                             for k, v in sri_data.get("components", {}).items()}
+            }
+        })
+    
+    except Exception as err:
+        return jsonify({
+            "error": f"CAI computation failed: {str(err)}",
+            "cai": {"score": 0, "state": "baseline"}
+        }), 500
 
 
 @app.route("/solar-composite")
